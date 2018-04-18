@@ -13,5 +13,7 @@ Jupyter required for notebook based data exploration and plotting.
 
 `source activate infotracking`
 
-`python EM.py <filename_base> <file_name_extension> <start_frame> <number_frames>`
+`python EM.py <filename_pattern> <start_frame> <number_frames>`
+
+where `<filename_pattern>` is a format string with full path, e.g. `/Users/tim/data/image%03d.tif`.
 

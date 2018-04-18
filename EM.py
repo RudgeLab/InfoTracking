@@ -137,7 +137,7 @@ def main():
     '''
     Input args:
 
-    filename_base, filename_extension, start_frame, number_frames
+    filename_pattern, start_frame, number_frames
     '''
 
     import sys
@@ -148,11 +148,10 @@ def main():
 
     # Load images
 
-    fnamebase = sys.argv[1]
-    fname = fnamebase + sys.argv[2]
+    fname = sys.argv[1]
 
-    startframe = int(sys.argv[3])
-    nframes = int(sys.argv[4])
+    startframe = int(sys.argv[2])
+    nframes = int(sys.argv[3])
     im1 = [plt.imread(fname%(startframe+i*2)).astype(np.float32) for i in range(nframes)]
     im2 = [plt.imread(fname%(startframe+2+i*2)).astype(np.float32) for i in range(nframes)]
 
