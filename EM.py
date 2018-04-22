@@ -152,8 +152,9 @@ def main():
 
     startframe = int(sys.argv[2])
     nframes = int(sys.argv[3])
-    im1 = [plt.imread(fname%(startframe+i*2)).astype(np.float32) for i in range(nframes)]
-    im2 = [plt.imread(fname%(startframe+2+i*2)).astype(np.float32) for i in range(nframes)]
+    step = int(sys.argv[4])
+    im1 = [plt.imread(fname%(startframe+(nframes-i)*2)).astype(np.float32) for i in range(nframes)]
+    im2 = [plt.imread(fname%(startframe+(nframes-1-i)*2)).astype(np.float32) for i in range(nframes)]
 
     w,h = im1[0].shape
     w,h = im1[0].shape
