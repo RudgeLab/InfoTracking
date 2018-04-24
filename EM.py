@@ -56,12 +56,12 @@ def analyse_region(im1,im2, w,h, vx_max, vy_max, px1,py1, px2,py2, nbins):
             hgram_offset, xedges, yedges = np.histogram2d( im1_roi.ravel(), \
                                                     im2_roi_offset.ravel(), \
                                                     bins=nbins, \
-                                                    range=[(0,2**16),(0,2**16)])
+                                                    range=[(0,2**8),(0,2**8)])
             hy_val_offset = infotheory.entropy(hgram_offset, ax=0)
             hgram, xedges, yedges = np.histogram2d( im1_roi.ravel(), \
                                                     im2_roi.ravel(), \
                                                     bins=nbins, \
-                                                    range=[(0,2**16),(0,2**16)])
+                                                    range=[(0,2**8),(0,2**8)])
             hy_val = infotheory.entropy(hgram, ax=0)
             if hy_val<1.0:
                 print 'Entropy of region (%d,%d) too low (%f), skipping'%(px1,py1,hy_val)
@@ -209,7 +209,7 @@ def main():
                                             vmax, vmax, \
                                             px,py, \
                                             gside/2.0, \
-                                            nbins=256, ofname=ofname)
+                                            nbins=16, ofname=ofname)
                 if tracking:
                     px2,py2,ll,im2_roi = tracking
                     pos[ix,iy,i+1,:] = [px2,py2]
