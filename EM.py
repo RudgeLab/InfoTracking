@@ -88,7 +88,9 @@ def find_peak(arr):
     ww = (w-1)/2
     hh = (h-1)/2
 
-    pk = arr>0.99*np.max(arr,axis=(0,1))
+    mx = np.max(arr,axis=(0,1))
+    mn = np.min(arr,axis=(0,1))
+    pk = np.abs(arr-mn) > 0.95*(mx-mn)
     pky,pkx = np.meshgrid(np.arange(-ww,ww+1), np.arange(-hh,hh+1))
     x = np.sum(pkx*pk)/np.sum(pk)
     y = np.sum(pky*pk)/np.sum(pk)
@@ -118,7 +120,7 @@ def track_cond_entropy(im1,im2, vx_max,vy_max, px1,py1, gs, nbins=256, ofname=No
         return px2,py2,0,im2_roi
     else:
         #Find peak in I(im1,im2)/H(im2) to compute mean velocity estimate
-        ll = mi_grid/hy_grid
+        ll = -hy_cond_x_grid  #mi_grid/hy_grid 
         zxpk,zypk = find_peak(ll)
 
         # Estimate new mean position as peak of I(im2,im2)/H(im2)
