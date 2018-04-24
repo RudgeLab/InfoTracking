@@ -64,7 +64,7 @@ def analyse_region(im1,im2, w,h, vx_max, vy_max, px1,py1, px2,py2, nbins):
                                                     range=[(0,2**8),(0,2**8)])
             hy_val = infotheory.entropy(hgram, ax=0)
             if hy_val<1.0:
-                print 'Entropy of region (%d,%d) too low (%f), skipping'%(px1,py1,hy_val)
+                #print 'Entropy of region (%d,%d) too low (%f), skipping'%(px1,py1,hy_val)
                 return None
             hy[vx+vx_max,vy+vy_max] = hy_val_offset
             hy_cond_x_val  = infotheory.conditional_entropy(hgram_offset, ax=1)
@@ -155,8 +155,8 @@ def main():
     startframe = int(sys.argv[2])
     nframes = int(sys.argv[3])
     step = int(sys.argv[4])
-    im1 = [plt.imread(fname%(startframe+(nframes-i)*2)).astype(np.float32) for i in range(nframes)]
-    im2 = [plt.imread(fname%(startframe+(nframes-1-i)*2)).astype(np.float32) for i in range(nframes)]
+    im1 = [plt.imread(fname%(startframe+(nframes-i)*step)).astype(np.float32) for i in range(nframes)]
+    im2 = [plt.imread(fname%(startframe+(nframes-1-i)*step)).astype(np.float32) for i in range(nframes)]
 
     w,h = im1[0].shape
     w,h = im1[0].shape
@@ -195,12 +195,15 @@ def main():
             pos[ix,iy,0,:] = [px0+ix*dgx,py0+iy*dgy]
     for i in range(nframes-1):
         print '------------ Step %d ---------'%i
+        print ' Image pair:'
+        print '  ', fname%(startframe+(nframes-i)*step)
+        print '  ', fname%(startframe+(nframes-1-i)*step)
         for ix in range(gx):
             for iy in range(gy):
                 ofname = 'gridtesting/im2-pos%d_%d_step%04d.tif'%(pos[ix,iy,0,0],pos[ix,iy,0,1],i)
                 px = int(pos[ix,iy,i,0])
                 py = int(pos[ix,iy,i,1])
-                print px,py
+                #print px,py
                 if px<gside+vmax or px>=w-gside-vmax or py<gside+vmax or py>=h-gside-vmax: 
                     print "Grid square outside image, skipping"
                     tracking = None
@@ -215,7 +218,7 @@ def main():
                     pos[ix,iy,i+1,:] = [px2,py2]
                     llikelihood[ix,iy,i+1,:,:] = ll
                     roi[ix,iy,i+1,:,:] = im2_roi
-                    print 'vel = ', px2-px, py2-py
+                    #print 'vel = ', px2-px, py2-py
                 else:
                     pos[ix,iy,i+1,:] = [px,py]
                     llikelihood[ix,iy,i+1,:,:] = 0.0
