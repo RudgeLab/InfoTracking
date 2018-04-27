@@ -26,13 +26,13 @@ def Pickledx(cs1,cs2,dt,fact): #cellstate1,cellstate2,dt,scalation factor
 def velplotter(image,position1,position2,velocity):
     plt.figure()
     plt.imshow(image)
-    plt.plot(position1[:,1],position1[:,0],"ro",markersize = 1)
-    plt.quiver(position1[:,1],position1[:,0],-velocity[:,1],velocity[:,0])
+    plt.plot(position1[:,0],position1[:,1],"ro",markersize = 1)
+    plt.quiver(position1[:,0],position1[:,1],velocity[:,0],velocity[:,1])
     plt.show(block=False)
     
-data1 = cPickle.load(open("/Users/Ignacio/cellmodeller/data/Tutorial_1a-18-04-10-17-59/step-00450.pickle", 'rb'))
-data2 = cPickle.load(open("/Users/Ignacio/cellmodeller/data/Tutorial_1a-18-04-10-17-59/step-00460.pickle", 'rb'))
-img = mpimg.imread("/Users/Ignacio/cellmodeller/data/Tutorial_1a-18-04-10-17-59/step-00450.png")
+data1 = cPickle.load(open("/Users/Ignacio/cellmodeller/data/Tutorial_1a-18-04-10-17-59/step-00520.pickle", 'rb'))
+data2 = cPickle.load(open("/Users/Ignacio/cellmodeller/data/Tutorial_1a-18-04-10-17-59/step-00530.pickle", 'rb'))
+img = mpimg.imread("/Users/Ignacio/cellmodeller/data/Tutorial_1a-18-04-10-17-59/step-00520.png")
 
 csa = data1['cellStates']
 csb = data2['cellStates']
@@ -42,12 +42,13 @@ imagesize = 1181
 
 #resizing= imagesize/worldsize #not so good
 #C = imagesize/2 #not so good
-C = 590.5
-resizing = 4.72
 
-#pos1 = imagesize/2 - pos2pixel(np.array([cell1.pos for (id,cell1) in csa.iteritems()]),resizing)
-#pos2 = imagesize/2 - pos2pixel(np.array([cell2.pos for (id,cell2) in csb.iteritems()]),resizing)
+C = 590.5
+resizing = 4.724
+
 vel,pos1,pos2 = Pickledx(csa,csb,1,resizing)
+pos1 = np.array([[-a,b,c] for (a,b,c) in pos1]) #fix axis, after noticing how to fix: a simpler way would be pos[:,0] = -pos[:,0]
+pos2 = np.array([[-a,b,c] for (a,b,c) in pos2]) 
 pos1,pos2 = C - pos2pixel(pos1,resizing), C - pos2pixel(pos2,resizing) #pickle's 0 is in middle of colony
 
 velplotter(img,pos1,pos2,vel)
