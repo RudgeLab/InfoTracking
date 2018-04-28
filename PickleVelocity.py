@@ -29,17 +29,20 @@ def velplotter(image,position1,position2,velocity,j):
     plt.imshow(image)
     plt.plot(position1[:,0],position1[:,1],"ro",markersize = 0.5)
     plt.quiver(position1[:,0],position1[:,1],velocity[:,0],velocity[:,1])
-    plt.show()
-    #fig1.savefig('velstep-00'+str(startframe+j)+'0.png')
+    #plt.show()
+    fig1.savefig('velstep-00'+str(startframe+j)+'0.pdf')
 
 '''-------MAIN-----'''
 plt.ioff()
 
 dt=100
-nframes = 4
-startframe = 35
-fname = "/Users/Ignacio/cellmodeller/data/Tutorial_1a-18-04-10-17-59/step-00%0d0.pickle"
-fname2 = "/Users/Ignacio/cellmodeller/data/Tutorial_1a-18-04-10-17-59/step-00%0d0.png"
+nframes = 20 
+startframe = 6 
+ 
+fname = "/Users/timrudge/cellmodeller/data/weiner-17-12-07-17-56/step-%04d0.pickle"
+#fname = "/Users/Ignacio/cellmodeller/data/Tutorial_1a-18-04-10-17-59/step-00%0d0.pickle"
+fname2 = "/Users/timrudge/cellmodeller/data/weiner-17-12-07-17-56/step-%04d0.png"
+#fname2 = "/Users/Ignacio/cellmodeller/data/Tutorial_1a-18-04-10-17-59/step-00%0d0.png"
 
 im1 = np.array([cPickle.load(open(fname%(startframe+i))) for i in range(nframes)])
 im2 = np.array([cPickle.load(open(fname%(startframe+i+1))) for i in range(nframes)])
@@ -54,13 +57,17 @@ csa = np.array([element['cellStates'] for element in im1])
 #csa = im1['cellStates']
 #csb = data2['cellStates']
 
-worldsize = 250
-imagesize = 1181
+worldsize = 250.0
+imagesize = imgs[0].shape[0]
 
-#resizing= imagesize/worldsize #not so good
-#C = imagesize/2 #not so good
-C = 590.5
-resizing = 4.724
+resizing= imagesize/worldsize #not so good
+C = imagesize/2 #not so good
+#C = 590.5
+#resizing = 4.724
+
+print "worldsize = ", worldsize
+print "imagesize = ", imagesize
+print "resizing = ", resizing
 
 #vel,pos1,pos2 = np.array([Pickledx(csa[i],csa[i+1],1,resizing) for i in range(nframes-1)])
 velpos = np.array([Pickledx(csa[i],csa[i+1],dt,resizing) for i in range(nframes-1)])
