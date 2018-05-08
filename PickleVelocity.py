@@ -72,9 +72,11 @@ for element in velpos:
 for item in velpos:
     item[2] = np.array([[C+a,C-b,c] for (a,b,c) in item[2]])
 print("Done calculating velocities")
-'''NOT NEEDED'''
+'''NOT NEEDED
 for i in range(len(velpos)):
     velplotter(imgs[i],velpos[i,1],velpos[i,2],velpos[i,0],i)
+'''
+
 
 def sumtogrid(posit,vels,grid,gxs,gys):
     x,y = posit[0],posit[1]
@@ -82,9 +84,14 @@ def sumtogrid(posit,vels,grid,gxs,gys):
     grid[xchk,ychk] += np.array([vels[0],vels[1]])
     return grid
     
-    
+def plotgrid():
+    for i in range(gx):
+        plt.hlines(i*dgx,0,imagesize)
+    for j in range(gy):
+        plt.vlines(j*dgy,0,imagesize)
+        
 gridfac = 64
-gx,gy = int(np.floor(imagesize/gridfac))-1,int(np.floor(imagesize/gridfac))-1
+gx,gy = int(np.floor(imagesize/gridfac)),int(np.floor(imagesize/gridfac))
 print "Grid dimensions: ",gx,gy
 dgx,dgy = gridfac,gridfac
 pos = np.zeros((nframes-1,gx,gy,2))
@@ -94,13 +101,12 @@ for step in range(nframes-1):
     for i in range(len(poscheck1)):
         pos[step] = sumtogrid(poscheck1[i],vel2add[i],pos[step],dgx,dgy)
 #pos is now a grid of nframes,gx,gy,sumofvelocities
-           
-d = 165
-
-for x in range(len(pos[8])):
+        
+#plots:
+        
+for x in range(len(pos[8])): #8th as example
     for y in range(len(pos[8])):
-        #plt.quiver((gx*x)+C-d+25,C-(gy*y)+d-5,pos[1,x,y,0],-pos[1,x,y,1])
-        plt.quiver((dgx*x)+46.5,(dgy*y)+46.5,pos[1,x,y,0],pos[1,x,y,1])
-
-
+        plt.quiver((dgx*x)+gridfac/2,(dgy*y)+gridfac/2,pos[1,x,y,0],pos[1,x,y,1])
+plt.imshow(imgs[8])
+plotgrid()
 plt.show()
