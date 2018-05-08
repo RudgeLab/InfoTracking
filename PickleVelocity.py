@@ -25,7 +25,7 @@ def Pickledx(cs1,cs2,dt,fact): #cellstate1,cellstate2,dt,scalation factor
     return [dx/dt, arraypos1, arraypos2]
 
 def velplotter(image,position1,position2,velocity,j):
-    fig1 = plt.figure()
+    #fig1 = plt.figure()
     plt.imshow(image)
     plt.plot(position1[:,0],position1[:,1],"ro",markersize = 0.5)
     plt.quiver(position1[:,0],position1[:,1],velocity[:,0],velocity[:,1])
@@ -53,7 +53,6 @@ csa = np.array([element['cellStates'] for element in data])
 
 worldsize = 250.0
 imagesize = imgs[0].shape[0]
-
 resizing= imagesize/worldsize 
 C = imagesize/2 
 
@@ -65,13 +64,14 @@ print "resizing factor = ", resizing
 
 velpos = np.array([Pickledx(csa[i],csa[i+1],dt,resizing) for i in range(nframes-1)]) #dim (nframes-1,3) with dx,x1,x2
 
-#pos1 = np.array([[-a,b,c] for (a,b,c) in pos1]) #fix axis, after noticing how to fix: a simpler way would be pos[:,0] = -pos[:,0]
 
 for element in velpos:
     element[1] = np.array([[C+a,C-b,c] for (a,b,c) in element[1]])
 for item in velpos:
     item[2] = np.array([[C+a,C-b,c] for (a,b,c) in item[2]])
+    
 print("Done calculating velocities")
+
 '''NOT NEEDED
 for i in range(len(velpos)):
     velplotter(imgs[i],velpos[i,1],velpos[i,2],velpos[i,0],i)
@@ -81,7 +81,7 @@ for i in range(len(velpos)):
 def sumtogrid(posit,vels,grid,gxs,gys):
     x,y = posit[0],posit[1]
     xchk,ychk = x/gxs, y/gys
-    grid[xchk,ychk] += np.array([vels[0],vels[1]])
+    grid[xchk,ychk] += np.array([vels[0],vels[1],1])
     return grid
     
 def plotgrid():
@@ -94,19 +94,21 @@ gridfac = 64
 gx,gy = int(np.floor(imagesize/gridfac)),int(np.floor(imagesize/gridfac))
 print "Grid dimensions: ",gx,gy
 dgx,dgy = gridfac,gridfac
-pos = np.zeros((nframes-1,gx,gy,2))
+grid = np.zeros((nframes-1,gx,gy,3)) #3: vx,vy,number of cells (for normalization)
 for step in range(nframes-1):
     poscheck1 = (velpos[step,1]).astype(int)
     vel2add = velpos[step,0]
     for i in range(len(poscheck1)):
-        pos[step] = sumtogrid(poscheck1[i],vel2add[i],pos[step],dgx,dgy)
-#pos is now a grid of nframes,gx,gy,sumofvelocities
-        
+        grid[step] = sumtogrid(poscheck1[i],vel2add[i],grid[step],dgx,dgy)
+#grid: nframes,gx,gy,sumofvelocities
+#normalizing velocities - TO-DO        
+
 #plots:
-        
-for x in range(len(pos[8])): #8th as example
-    for y in range(len(pos[8])):
-        plt.quiver((dgx*x)+gridfac/2,(dgy*y)+gridfac/2,pos[1,x,y,0],pos[1,x,y,1])
-plt.imshow(imgs[8])
+for x in range(len(grid[8])): #8th as example
+    for y in range(len(grid[8])):
+        if grid[8,x,y,2] != 0:
+            plt.quiver((dgx*x)+gridfac/2,(dgy*y)+gridfac/2,grid[8,x,y,0]/grid[8,x,y,2],grid[8,x,y,1]/grid[8,x,y,2])
+            #plt.text((dgx*x)+gridfac/2,(dgy*y)+gridfac/2,str(grid[8,x,y,2].astype(int)),size = 7) #for plotting the number of counted cells in a gridcell
+velplotter(imgs[8],velpos[8,1],velpos[8,2],velpos[8,0],8)
 plotgrid()
 plt.show()
