@@ -12,7 +12,7 @@ save_images = False
 
 
 
-def analyse_region(im1,im2, w,h, vx_max, vy_max, px1,py1, px2,py2, nbins):
+def analyse_region(im1,im2, w,h, vx_max, vy_max, px1,py1, px2,py2, nbins, range_mx):
     '''
     Compute mutual information between regions in image pairs over a range of
     offsets. This gives an estimate of the structural similarity between the
@@ -56,12 +56,12 @@ def analyse_region(im1,im2, w,h, vx_max, vy_max, px1,py1, px2,py2, nbins):
             hgram_offset, xedges, yedges = np.histogram2d( im1_roi.ravel(), \
                                                     im2_roi_offset.ravel(), \
                                                     bins=nbins, \
-                                                    range=[(0,2**8),(0,2**8)])
+                                                    range=[(0,range_mx),(0,range_mx)])
             hy_val_offset = infotheory.entropy(hgram_offset, ax=0)
             hgram, xedges, yedges = np.histogram2d( im1_roi.ravel(), \
                                                     im2_roi.ravel(), \
                                                     bins=nbins, \
-                                                    range=[(0,2**8),(0,2**8)])
+                                                    range=[(0,range_mx),(0,range_mx)])
             hy_val = infotheory.entropy(hgram, ax=0)
             if hy_val<1.0:
                 #print 'Entropy of region (%d,%d) too low (%f), skipping'%(px1,py1,hy_val)
@@ -97,14 +97,14 @@ def find_peak(arr):
     return x,y
 
 # Compute conditional entropy at different uniform velocities
-def track_cond_entropy(im1,im2, vx_max,vy_max, px1,py1, gs, nbins=256, ofname=None):
+def track_cond_entropy(im1,im2, vx_max,vy_max, px1,py1, gs, nbins=256, range_mx=2**8, ofname=None):
     # Compute mutual information between image regions over offset grid
     region_analysis = analyse_region(im1,im2, \
                                                             gs,gs, \
                                                             vx_max,vy_max, \
                                                             px1,py1, \
                                                             px1,py1, \
-                                                            nbins)
+                                                            nbins, range_mx)
     if region_analysis:
         hy_grid,hy_cond_x_grid,mi_grid,hz_grid = region_analysis
     else:
@@ -170,8 +170,12 @@ def main():
     print "Grid dimensions: ",gx,gy
 
     print "Image intensity range:"
-    print np.max(im1), np.min(im1)
-    print np.max(im2), np.min(im2)
+    mx1 = np.max(np.array(im1))
+    mn1 = np.min(np.array(im1))
+    mx2 = np.max(np.array(im2))
+    mn2 = np.min(np.array(im2))
+    print mn1, mx1
+    print mn2, mx2
 
 
     # Filter images to remove noise
@@ -212,13 +216,14 @@ def main():
                                             vmax, vmax, \
                                             px,py, \
                                             gside/2.0, \
-                                            nbins=16, ofname=ofname)
+                                            nbins=16, range_mx=max(mx1,mx2), \
+                                            ofname=ofname)
                 if tracking:
                     px2,py2,ll,im2_roi = tracking
                     pos[ix,iy,i+1,:] = [px2,py2]
                     llikelihood[ix,iy,i+1,:,:] = ll
                     roi[ix,iy,i+1,:,:] = im2_roi
-                    #print 'vel = ', px2-px, py2-py
+                    print 'vel = ', px2-px, py2-py
                 else:
                     pos[ix,iy,i+1,:] = [px,py]
                     llikelihood[ix,iy,i+1,:,:] = 0.0
