@@ -135,36 +135,41 @@ def track_cond_entropy(im1,im2, vx_max,vy_max, px1,py1, gs, nbins=256, range_mx=
 
 
 
-def main():
+def main(fname,startframe,nframes,step,gridfact, forwards = True, GridMethod = None):
     '''
     Input args:
 
     filename_pattern, start_frame, number_frames
     '''
-
+    '''
     import sys
     if plotting:
         plt.ion()
         plt.figure(figsize=(12,4))
-
+    '''
 
     # Load images
-
+    '''
     fname = sys.argv[1]
 
     startframe = int(sys.argv[2])
     nframes = int(sys.argv[3])
     step = int(sys.argv[4])
-    im1 = [plt.imread(fname%(startframe+(nframes-i)*step)).astype(np.float32) for i in range(nframes)]
-    im2 = [plt.imread(fname%(startframe+(nframes-1-i)*step)).astype(np.float32) for i in range(nframes)]
+    '''
+    if forwards == True:
+        im1 = [plt.imread(fname%(startframe+(i)*step)).astype(np.float32) for i in range(nframes)]
+        im2 = [plt.imread(fname%(startframe+(i+1)*step)).astype(np.float32) for i in range(nframes)]
+    elif forwards == False:
+        im1 = [plt.imread(fname%(startframe+(nframes-i)*step)).astype(np.float32) for i in range(nframes)] #backwards
+        im2 = [plt.imread(fname%(startframe+(nframes-1-i)*step)).astype(np.float32) for i in range(nframes)] #backwards
+        
+    w,h = im1[0].shape[0], im1[0].shape[1]
 
-    w,h = im1[0].shape
-    w,h = im1[0].shape
 
     # Grid dimensions and spacing for regions of interest
-    gx,gy = int(np.floor(w/64))-1,int(np.floor(h/64))-1
-    dgx,dgy = 64,64
-    gside = 64
+    gx,gy = int(np.floor(w/gridfact)),int(np.floor(h/gridfact))
+    dgx,dgy = gridfact, gridfact
+    gside = gridfact
 
     print "Image dimensions: ",w,h
     print "Grid dimensions: ",gx,gy
@@ -177,6 +182,8 @@ def main():
     print mn1, mx1
     print mn2, mx2
 
+    if GridMethod == None:
+        GridMethod = input("Select grid method (1) for tracking grid or (2) for reset grid: ") 
 
     # Filter images to remove noise
     from scipy.ndimage.filters import gaussian_filter
@@ -188,57 +195,66 @@ def main():
     vmax = 7
     pos = np.zeros((gx,gy,nframes,2))
     llikelihood = np.zeros((gx,gy,nframes,vmax*2+1,vmax*2+1))
-    roi = np.zeros((gx,gy,nframes,gside,gside))
-
+    roi = np.zeros((gx,gy,nframes,gside,gside,4))
+    grid = np.zeros((nframes,gx,gy,5))
 
     # Set initial grid positions
     px0 = gside + vmax
     py0 = gside + vmax
-    for ix in range(gx):
-        for iy in range(gy):
-            pos[ix,iy,0,:] = [px0+ix*dgx,py0+iy*dgy]
-    for i in range(nframes-1):
-        print '------------ Step %d ---------'%i
-        print ' Image pair:'
-        print '  ', fname%(startframe+(nframes-i)*step)
-        print '  ', fname%(startframe+(nframes-1-i)*step)
+    if GridMethod == 1:
         for ix in range(gx):
             for iy in range(gy):
-                ofname = 'gridtesting/im2-pos%d_%d_step%04d.tif'%(pos[ix,iy,0,0],pos[ix,iy,0,1],i)
-                px = int(pos[ix,iy,i,0])
-                py = int(pos[ix,iy,i,1])
-                #print px,py
-                if px<gside+vmax or px>=w-gside-vmax or py<gside+vmax or py>=h-gside-vmax: 
-                    print "Grid square outside image, skipping"
-                    tracking = None
-                else:
-                    tracking = track_cond_entropy(im1[i], im2[i], \
-                                            vmax, vmax, \
-                                            px,py, \
-                                            gside/2.0, \
-                                            nbins=16, range_mx=max(mx1,mx2), \
-                                            ofname=ofname)
-                if tracking:
-                    px2,py2,ll,im2_roi = tracking
-                    pos[ix,iy,i+1,:] = [px2,py2]
-                    llikelihood[ix,iy,i+1,:,:] = ll
-                    roi[ix,iy,i+1,:,:] = im2_roi
-                    print 'vel = ', px2-px, py2-py
-                else:
-                    pos[ix,iy,i+1,:] = [px,py]
-                    llikelihood[ix,iy,i+1,:,:] = 0.0
-                    roi[ix,iy,i+1,:,:] = 0
-
-                #plt.ylim([0,30])
-                #if i==0:
-                #    plt.colorbar()
-
-        #print 'pos[i+1] =', pos[ix,iy,i+1,:]
-
-    pos.tofile('pos.np', sep=',')
-    roi.tofile('roi.np', sep=',')
-    llikelihood.tofile('ll.np', sep=',')
-
+                pos[ix,iy,0,:] = [px0+ix*dgx,py0+iy*dgy]
+                grid[0,ix,iy,:] = [0,0,1,px0+ix*dgx,py0+iy*dgy]
+    
+        for i in range(nframes-1):
+            print '------------ Step %d ---------'%i
+            print ' Image pair:'
+            print '  ', fname%(startframe+(nframes-i)*step)
+            print '  ', fname%(startframe+(nframes-1-i)*step)
+            for ix in range(gx):
+                for iy in range(gy):
+                    ofname = 'gridtesting/im2-pos%d_%d_step%04d.tif'%(pos[ix,iy,0,0],pos[ix,iy,0,1],i)
+                    px = int(pos[ix,iy,i,0])
+                    py = int(pos[ix,iy,i,1])
+                    #print px,py
+                    if px<gside+vmax or px>=w-gside-vmax or py<gside+vmax or py>=h-gside-vmax: 
+                        print "Grid square outside image, skipping"
+                        tracking = None
+                    else:
+                        tracking = track_cond_entropy(im1[i], im2[i], \
+                                                vmax, vmax, \
+                                                px,py, \
+                                                gside/2.0, \
+                                                nbins=16, range_mx=max(mx1,mx2), \
+                                                ofname=ofname)
+                    grid[i+1,ix,iy] = [0,0,0,grid[i,ix,iy,3],grid[i,ix,iy,4]]
+                    if tracking:
+                        px2,py2,ll,im2_roi = tracking
+                        pos[ix,iy,i+1,:] = [px2,py2]
+                        llikelihood[ix,iy,i+1,:,:] = ll
+                        roi[ix,iy,i+1,:,:,:] = im2_roi
+                        grid[i,ix,iy,:] += [px2-px,py2-py,1,0,0]
+                        grid[i+1,ix,iy] += [0,0,0,grid[i,ix,iy,0]*step,grid[i,ix,iy,1]*step]
+                        '''print 'vel = ', px2-px, py2-py'''
+                    else:
+                        pos[ix,iy,i+1,:] = [px,py]
+                        llikelihood[ix,iy,i+1,:,:] = 0.0
+                        roi[ix,iy,i+1,:,:] = 0
+                        grid[i,ix,iy,:] = [0,0,0,px,py]
+    
+                    #plt.ylim([0,30])
+                    #if i==0:
+                    #    plt.colorbar()
+    
+            #print 'pos[i+1] =', pos[ix,iy,i+1,:]
+        '''
+        pos.tofile('pos.np', sep=',')
+        roi.tofile('roi.np', sep=',')
+        llikelihood.tofile('ll.np', sep=',')
+        '''
+        print "Done"
+        return grid
 
 # Run analysis
 if __name__ == "__main__": 
