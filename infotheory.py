@@ -1,6 +1,6 @@
 import numpy as np
 
-def entropy(hgram, ax):
+def entropy(hgram, ax=None):
     '''
     Entropy H(X) of one variable given joint histogram
 
@@ -11,8 +11,9 @@ def entropy(hgram, ax):
     returns: entropy value
     '''
     # Convert bins counts to probability values
-    pxy = hgram / float(np.sum(hgram))
-    px = np.sum(pxy, axis=ax) # marginal for x over y
+    px = hgram / float(np.sum(hgram))
+    if ax:
+        px = np.sum(px, axis=ax) # marginal for x over y
     nzs = px > 0 # Only non-zero pxy values contribute to the sum
     ex = -np.sum(px[nzs] * np.log2(px[nzs]))
     return ex

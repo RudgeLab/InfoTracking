@@ -39,12 +39,14 @@ def xycheck(x,y,grid,gx,gy,dgx,dgy):
             dgridx,dgridy = grid[ix,iy,3],grid[ix,iy,4]
             if x >= dgridx and y >= dgridy and x <= dgridx+dgx and y <= dgridy+dgy:
                 return ix,iy
+
 #method 2 sum2grid
 def sumtogrid2(posit,vels,grid,dgx,dgy):
     x,y = posit[0],posit[1]
     xchk,ychk = x/dgx, y/dgy
     grid[xchk,ychk] += np.array([vels[0],vels[1],1,0,0])
     return grid
+
 def fname2pickle(fname):
     if fname.endswith(".png") or fname.endswith(".jpg"):
         newfname = fname[:len(fname)-4]+".pickle"
@@ -93,6 +95,7 @@ def main(fname, startframe, nframes, dt, gridfac, worldsize=250.0, forwards = Tr
     print "Grid dimensions: ",gx,gy
     dgx,dgy = gridfac,gridfac
     grid = np.zeros((nframes,gx,gy,5)) #5: vx,vy,number of cells (for normalization), posgridx, posgridy
+
         
     if GridMethod == 1:   
         for ix in range(gx):
