@@ -39,12 +39,14 @@ def xycheck(x,y,grid,gx,gy,dgx,dgy):
             dgridx,dgridy = grid[ix,iy,3],grid[ix,iy,4]
             if x >= dgridx and y >= dgridy and x <= dgridx+dgx and y <= dgridy+dgy:
                 return ix,iy
+            
 #method 2 sum2grid
 def sumtogrid2(posit,vels,grid,dgx,dgy):
     x,y = posit[0],posit[1]
     xchk,ychk = x/dgx, y/dgy
     grid[xchk,ychk] += np.array([vels[0],vels[1],1,0,0])
     return grid
+
 def fname2pickle(fname):
     if fname.endswith(".png") or fname.endswith(".jpg"):
         newfname = fname[:len(fname)-4]+".pickle"
@@ -53,20 +55,20 @@ def fname2pickle(fname):
     return newfname
 
 
-def main(fname, startframe, nframes, dt, gridfac, worldsize=250.0, forwards = True, GridMethod = None ):
-       
+def main(fname, startframe, nframes, dt, gridfac, worldsize=250.0, forwards = True, GridMethod = None , PGE = False):
+
     fname2 = fname2pickle(fname)
     
     if forwards == True:
         data = np.array([cPickle.load(open(fname2%(startframe+i*dt))) for i in range(nframes)]) #forward
         imgs = np.array([plt.imread(open(fname%(startframe+i*dt))) for i in range(nframes)]) #forward
+    
     elif forwards == False:
         data = np.array([cPickle.load(open(fname2%(startframe+(nframes-i)*dt))) for i in range(nframes)]) #backwards
         imgs = np.array([plt.imread(open(fname%(startframe+(nframes-i)*dt))) for i in range(nframes)]) #backwards
     
     csa = np.array([element['cellStates'] for element in data])
 
-    worldsize = 250.0
     imagesize = imgs[0].shape[0]
     resizing= imagesize/worldsize 
     C = imagesize/2 
@@ -133,4 +135,7 @@ def main(fname, startframe, nframes, dt, gridfac, worldsize=250.0, forwards = Tr
                         grid[step,ix,iy,1] = grid[step,ix,iy,1]/grid[step,ix,iy,2]
     gridstuff = [gx,gy,dgx,dgy]
     print("Done")
-    return (grid, gridstuff,velpos,imgs)
+    if PGE == False:
+        return (grid, gridstuff,velpos,imgs)
+    elif PGE == True:
+        return (grid, gridstuff,velpos,imgs,data,csa)
