@@ -226,7 +226,7 @@ def main(fname,startframe,nframes,step,gridfact, forwards = True, GridMethod = N
     vmax = 7
     pos = np.zeros((gx,gy,nframes,2))
     llikelihood = np.zeros((gx,gy,nframes,vmax*2+1,vmax*2+1))
-    roi = np.zeros((gx,gy,nframes,gside,gside))
+    roi = np.zeros((gx,gy,nframes,gside,gside,4))
     grid = np.zeros((nframes,gx,gy,5))
 
     # Set initial grid positions
@@ -266,16 +266,16 @@ def main(fname,startframe,nframes,step,gridfact, forwards = True, GridMethod = N
                         print "vel ", px2-px, py2-py
                         llikelihood[ix,iy,i+1,:,:] = ll
                         #plt.figure()
-                        plt.plot(hzgrid.ravel(), ll.ravel())
+                        #plt.plot(hzgrid.ravel(), ll.ravel())
                         roi[ix,iy,i+1,:,:] = im2_roi
-                        #grid[i,ix,iy,:] += [px2-px,py2-py,1,0,0]
-                        #grid[i+1,ix,iy] += [0,0,0,grid[i,ix,iy,0]*step,grid[i,ix,iy,1]*step]
+                        grid[i,ix,iy,:] += [px2-px,py2-py,1,0,0]
+                        grid[i+1,ix,iy] += [0,0,0,grid[i,ix,iy,0]*step,grid[i,ix,iy,1]*step]
                         '''print 'vel = ', px2-px, py2-py'''
                     else:
                         pos[ix,iy,i+1,:] = [px,py]
                         llikelihood[ix,iy,i+1,:,:] = 0.0
                         roi[ix,iy,i+1,:,:] = 0
-                        #grid[i,ix,iy,:] = [0,0,0,px,py]
+                        grid[i,ix,iy,:] = [0,0,0,px,py]
     
                     #plt.ylim([0,30])
                     #if i==0:

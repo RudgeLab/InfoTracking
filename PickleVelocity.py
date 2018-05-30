@@ -39,11 +39,7 @@ def xycheck(x,y,grid,gx,gy,dgx,dgy):
             dgridx,dgridy = grid[ix,iy,3],grid[ix,iy,4]
             if x >= dgridx and y >= dgridy and x <= dgridx+dgx and y <= dgridy+dgy:
                 return ix,iy
-<<<<<<< HEAD
-            
-=======
 
->>>>>>> 005a01f0bab0738f6ec8433da80bd953098c829c
 #method 2 sum2grid
 def sumtogrid2(posit,vels,grid,dgx,dgy):
     x,y = posit[0],posit[1]
