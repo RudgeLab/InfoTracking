@@ -1,3 +1,2 @@
-
-GridAnalytics.ipynb
-PickleVelocity.py
+*.pyc
+.ipynb*
