@@ -27,6 +27,8 @@ def plotter(grid,imgs):
     cent = 1
     velplot = 0
     cellplot = 1
+    fig = plt.figure(figsize=(16,16))
+    
     if plot == 4:
         pause = input("Type delay between plots: ")
         plotanimate(grid,imgs,gx,gy,dgx,dgy,pause)
@@ -51,10 +53,11 @@ def plotter(grid,imgs):
            for x in range(grid.gx): 
                for y in range(grid.gy):
                    if grid[F2P,x,y].actualcells != 0:
-                       plt.quiver(grid[F2P,x,y].px+grid.dgx/2,grid[F2P,x,y].py+grid.dgy/2,grid[F2P,x,y].vx,grid[F2P,x,y].vy) #the minus fixes axis problem
+                       plt.quiver(grid[F2P,x,y].px+grid.dgx/2,grid[F2P,x,y].py+grid.dgy/2,grid[F2P,x,y].vx ,grid[F2P,x,y].vy) #the minus fixes axis problem
                        #plt.text((dgx*x)+gridfac/2,(dgy*y)+gridfac/2,str(grid[8,x,y,2].astype(int)),size = 7) #for plotting the number of counted cells in a gridcell
         if cellplot == 1:
             plt.imshow(imgs[F2P],origin = 'lower')
+            plt.colormap("gray")
         if velplot == 1:
                 for ix in range(grid.gx):
                     for iy in range(grid.gy):

@@ -65,8 +65,8 @@ def fitcurve(allvars,nbins,skip):
 alltimes = mainEC(grid,'vel')
 allvars = alltosingle(alltimes)
 #coolhist()
-fitcurve(allvars,15,0.05)
-makehist(allvars,15,0.05)
+fitcurve(allvars,15,0)
+makehist(allvars,15,0)
 '''
 for i in range(len(alltimes)):
     plt.clf()
