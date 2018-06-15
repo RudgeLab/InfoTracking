@@ -1,6 +1,6 @@
 # InfoTracking
 
-Time-lapse microscopy tracking using entropy and mutual information.
+Time-lapse microscopy and simulation tracking using entropy and mutual information.
 
 Requires:
 * numpy
