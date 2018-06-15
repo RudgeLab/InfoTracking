@@ -1,54 +1,68 @@
 import matplotlib.pyplot as plt
-def velplotter(image,position1,position2,velocity,j):
-    #fig1 = plt.figure()
-    plt.imshow(image)
-    plt.plot(position1[:,0],position1[:,1],"ro",markersize = 0.5)
-    plt.quiver(position1[:,0],position1[:,1],velocity[:,0],velocity[:,1])
-    #plt.show()
-    #fig1.savefig('velstep-00'+str(startframe+j)+'0.pdf')                    
-def squareplot(x,y,dgx,dgy):
-    plt.plot([x,x+dgx,x+dgx,x,x],[y,y,y+dgy,y+dgy,y],"k-")
-def plotensemble(grid,gx,gy,dgx,dgy):
+def squareplot(x,y,dgx,dgy,i):
+    plt.plot([x,x+dgx,x+dgx,x,x],[y,y,y+dgy,y+dgy,y],"k-",linewidth = 0.3)
+    
+def plotensemble(grid,t,gx,gy,dgx,dgy):
     for ix in range(gx):
         for iy in range(gy):
-            if grid[ix,iy,2] != 0:
-                squareplot(grid[ix,iy,3],grid[ix,iy,4],dgx,dgy)
-def plotter(nframes,grid,gridstuff,velpos = None, imgs = None):
-    gx,gy,dgx,dgy = gridstuff[0],gridstuff[1],gridstuff[2],gridstuff[3]
-  
+            if grid[t,ix,iy].actualcells != 0:
+                squareplot(grid[t,ix,iy].px,grid[t,ix,iy].py,dgx,dgy,t)
+                
+def plotanimate(grid,imgs,gx,gy,dgx,dgy,p):
+    for i in range(len(grid.frames)-1):
+        plt.clf()
+        plt.hold(True)
+        plt.imshow(imgs[i],origin = 'lower')
+        plotensemble(grid,i,gx,gy,dgx,dgy)
+        plt.hold(False)
+        plt.pause(p)
+        
+def plotter(grid,imgs):
+    gx,gy,dgx,dgy = grid.gx,grid.gy,grid.dgx,grid.dgy
+    plt.hold(True)
     print("Results are ready, show plots? Yes will plot last frame and will include everything ")
-    plot = input("(1) Yes, (2) No, (3) Advanced: ")
-    F2P = nframes-2
+    plot = input("(1) Yes, (2) No, (3) Advanced, (4) Animate: ")
+    F2P = grid.nframes-2
     ens = 1
-    if velpos == None:
-        velplot = None
-    else:
-        velplot = 1
     cent = 1
+    velplot = 0
+    cellplot = 1
+    fig = plt.figure(figsize=(16,16))
+    
+    if plot == 4:
+        pause = input("Type delay between plots: ")
+        plotanimate(grid,imgs,gx,gy,dgx,dgy,pause)
     if plot == 3:
-        print "Max allowed frame is",nframes-2,": "
+        print "Max allowed frame is",grid.nframes-2,": "
         F2P = input("Choose frame: ")
-        if velpos != None:
-            velplot = input("Plot cells and velocity of cells? (1) Yes, (2) No: ")
         ens = input("Plot ensembles and velocity of ensemble? (1) Yes, (2) No: ")
         cent = input("Plot evolution of grid center? (1) Yes, (2) No: ")
-      
-    if plot != 2:
+        cellplot = input("Plot cells? (1) Yes, (2) No: ")
+        velplot = input("Plot velocity of cells? (1) Yes, (2) No: ")
+    if plot != 2 and plot != 4:
         #Grid centers plot
         if cent == 1:
-            for k in range(nframes):
-                for x in range(len(grid[k])): 
-                    for y in range(len(grid[k])):
-                        if grid[k,x,y,2] != 0:
-                            plt.plot(grid[k,x,y,3]+dgx/2,grid[k,x,y,4]+dgy/2,"bo", markersize = 0.8)
+            for k in range(grid.nframes):
+                for x in range(grid.gx): 
+                    for y in range(grid.gy):
+                        if grid[k,x,y].actualcells != 0:
+                            plt.plot(grid[k,x,y].px + (grid.dgx)/2,grid[k,x,y].py+(grid.dgy)/2,"bo", markersize = 0.8)
                    
         if ens == 1:
-           plotensemble(grid[F2P],gx,gy,dgx,dgy)
-           for x in range(len(grid[F2P])): 
-               for y in range(len(grid[F2P])):
-                   if grid[F2P,x,y,2] != 0:
-                       plt.quiver(grid[F2P,x,y,3]+dgx/2,grid[F2P,x,y,4]+dgy/2,grid[F2P,x,y,0],grid[F2P,x,y,1]) #the minus fixes axis problem
+           plotensemble(grid,F2P,gx,gy,dgx,dgy)
+           for x in range(grid.gx): 
+               for y in range(grid.gy):
+                   if grid[F2P,x,y].actualcells != 0:
+                       plt.quiver(grid[F2P,x,y].px+grid.dgx/2,grid[F2P,x,y].py+grid.dgy/2,grid[F2P,x,y].vx ,grid[F2P,x,y].vy) #the minus fixes axis problem
                        #plt.text((dgx*x)+gridfac/2,(dgy*y)+gridfac/2,str(grid[8,x,y,2].astype(int)),size = 7) #for plotting the number of counted cells in a gridcell
+        if cellplot == 1:
+            plt.imshow(imgs[F2P],origin = 'lower')
+            plt.colormap("gray")
         if velplot == 1:
-            velplotter(imgs[F2P],velpos[F2P,1],velpos[F2P,2],velpos[F2P,0],F2P)  
-        plt.show()
+                for ix in range(grid.gx):
+                    for iy in range(grid.gy):
+                        for cell in grid[F2P,ix,iy].cells:
+                            plt.plot(grid.resize*cell.pos[0]+grid.center,-grid.resize*cell.pos[1]+grid.center,"ro",markersize = 0.2)
+                            #plt.quiver(cell.pos[0]+grid.center,cell.pos[1]+grid.center,cell.vx,cell.vy) #the minus fixes axis problem
+
+    plt.show()
