@@ -1,44 +1,48 @@
-#importa grid de PGE
-#histograma de velocidades de cada gridcell para todos los t
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import norm
 import matplotlib.mlab as mlab
+import infotheory as IT
 
-def mainEC(grid,AV):
-    times = []
-    for t in range(len(grid.frames)):
-        variable = []
+#for a single gridsquare in all times calculate average X
+#Calculate histogram
+#Input into infotheory.py
+
+def calculate_average(ensemble,attribute):
+    avg = 0
+    for id in ensemble.cells.keys():
+        cell_atr = getattr(ensemble.cells[id],attribute)
+        avg += cell_atr
+    ensemble.averages[attribute] = avg/len(ensemble.cells)
+    
+def histogram_ensemble(ensemble,attribute,nbins,skip):
+    attrib_list = np.array([getattr(ensemble.cells[id],attribute) for id in ensemble.cells.keys()])
+    hist,attr_edge = np.histogram(attrib_list[attrib_list>=skip],bins = nbins)
+    return hist,attr_edge,attrib_list
+
+def entropycalc(grid,attribute,x,y,nbins,skip):
+    for t in range(grid.nframes):
+        if grid[t,x,y].actualcells != 0:
+            histogram,attr_edges,attrib_list = histogram_ensemble(grid[t,x,y],attribute,nbins,skip)
+            grid[t,x,y].entropy[attribute] = IT.entropy(histogram)
+        
+def main(grid,attribute,nbins,skip):
+    #attribute = attribute_analysis()
+    for it in range(grid.nframes):
         for ix in range(grid.gx):
             for iy in range(grid.gy):
-                
-                if AV == 'vel':
-                    AV = ['vx','vy']
-                    vx = getattr(grid[t,ix,iy],AV[0])
-                    vy = getattr(grid[t,ix,iy],AV[1])
-                    elem = np.sqrt(((vx)**2)+(vy)**2)
-                    
-                if AV == 'x':
-                    aux = []
-                    for id in grid[t,ix,iy].cells.keys():
-                        var = getattr(grid[t,ix,iy].cells[id],'x')
-                        aux.append(var)
-                    elem = np.ravel(np.array(aux))
-                
-                variable.append(elem)
-            times.append(variable)     
-    return times
-
-
-def alltosingle(variab):
-    variab = np.array(variab)
-    variab = np.ravel(variab)
-    return variab
-
-def makehist(allvars,nbins,skip):
-    plt.hist(allvars[allvars >=skip],bins = nbins,normed = 1,edgecolor='#E6E6E6', color='#EE6666')
-             
+                if len(grid[it,ix,iy].cells) != 0:
+                    calculate_average(grid[it,ix,iy],attribute)
+    for ix in range(grid.gx):
+        for iy in range(grid.gy):
+                entropycalc(grid,attribute,ix,iy,nbins,skip)
     
+                
+                    
+        
+main(grid,'cellAge',20,0)
+
+'''    
 def coolhist():
     
     #ax = plt.axes(axisbg='#E6E6E6')
@@ -67,7 +71,7 @@ allvars = alltosingle(alltimes)
 #coolhist()
 fitcurve(allvars,15,0)
 makehist(allvars,15,0)
-'''
+
 for i in range(len(alltimes)):
     plt.clf()
     plt.hold(True)

@@ -23,9 +23,31 @@ class Grid():
     def __getitem__(self,i):
         if type(i) == int:
             return self.grid[i]
-        if len(i) == 3:
+        
+        if len(i) == 3 and type(i[0]) == int:
             frame,ix,iy = i
             return self.grid[frame][ix*self.gx+iy]
+        if len(i) == 3 and type(i[0]) == str:
+            attribute,ix,iy = i
+            entropy_t_list = []
+            for it in range(self.nframes):
+                if len(self.grid[it][ix*self.gx+iy].entropy)!= 0:
+                    entropy_t = self.grid[it][ix*self.gx+iy].entropy[attribute]
+                else:
+                    entropy_t = 0
+                entropy_t_list.append(entropy_t)
+            return entropy_t_list
+        
+    def getentropy(self,ix,iy,attribute):
+        entropy_t_list = []
+        for it in range(self.nframes):
+            if len(self.grid[it][ix*self.gx+iy].entropy)!= 0:
+                entropy_t = self.grid[it][ix*self.gx+iy].entropy[attribute]
+            else:
+                entropy_t = 0
+            entropy_t_list.append(entropy_t)
+        return entropy_t_list
+            
       
         
 class Ensemble(Grid):
@@ -38,6 +60,8 @@ class Ensemble(Grid):
         self.iy = iy
         self.t1 = frame
         self.cells = {}
+        self.entropy = {}
+        self.averages = {}
         self.skipped = 0
         self.actualcells = 0
     def addCell(self,cell,id): #cell = cellstate
@@ -50,6 +74,8 @@ class Ensemble(Grid):
             try:
                 dx_cell = nextstepcells[id].pos[0]-self.cells[id].pos[0]
                 dy_cell = nextstepcells[id].pos[1]-self.cells[id].pos[1]
+                self.cells[id].vx = dx_cell
+                self.cells[id].vy = dy_cell
                 self.actualcells +=1
             except KeyError:
                 self.skipped +=1
@@ -59,7 +85,7 @@ class Ensemble(Grid):
         if self.actualcells != 0:
             dx = dx/self.actualcells
             dy = dy/self.actualcells
-            
+        self.averages['vel'] = [factor*dx/dt,-factor*dy/dt]
         self.vx = factor*dx/dt
         self.vy = -factor*dy/dt
 
@@ -80,23 +106,15 @@ def checkcellingrid(cellstate,gsq,resize,dgx,dgy,center):
         return True
     else:
         return False
-'''    
-def ROI_velpos_cell(Method,gridcell,):
-    gridcell = []
-    if Method == 1:
-        ak = 0
-    #poner aca valores velocidad y posicion DE CADA celula en una grilla de grid
-    #luego lo transformas a histograma2d   ak = 0
-    
-def frame2grid(neogrid,dataframe,gx,gy,dgx,dgy,counter): 
-    for cell in dataframe:
-        try:
-            px,py = datacheck(neogrid,cell,gx,gy,dgx,dgy)
-            neogrid[px,py,3] = np.append(neogrid[px,py,3],cell)
-        except TypeError:
-            counter += 1
-        return neogrid,counter
-'''       
+
+
+
+
+
+
+
+
+     
 def main(fname,startframe,nframes,dt,gridfac,worldsize = 250.0, forwards = True, GridMethod = None):
     
     fname2 = fname2pickle(fname)    
@@ -164,8 +182,9 @@ def plott(grid,imgs,gx,gy,dgx,dgy):
         plt.pause(2)
        
 
-afname = "/home/inmedina/cellmodeller/data/ex1_simpleGrowth-18-06-15-12-54/step-%05d.png"
-astartframe = 10
+#afname = "/home/inmedina/cellmodeller/data/ex1_simpleGrowth-18-06-15-12-54/step-%05d.png"
+afname = "/Users/Ignacio/cellmodeller/data/Tutorial_1a-18-04-10-17-59/step-%05d.png"
+astartframe = 200
 anframes = 20
 adt = 10 #There's a bit of trouble with this
 agridfactor = 64 #pixels per grid
