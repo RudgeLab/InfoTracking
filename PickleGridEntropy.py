@@ -50,7 +50,7 @@ class Grid():
             
       
         
-class Ensemble(Grid):
+class Ensemble():
     def __init__(self,frame,ix,iy,px0,py0):
         self.px = px0
         self.py = py0
@@ -182,10 +182,10 @@ def plott(grid,imgs,gx,gy,dgx,dgy):
         plt.pause(2)
        
 
-#afname = "/home/inmedina/cellmodeller/data/ex1_simpleGrowth-18-06-15-12-54/step-%05d.png"
-afname = "/Users/Ignacio/cellmodeller/data/Tutorial_1a-18-04-10-17-59/step-%05d.png"
-astartframe = 200
+afname = "/home/inmedina/cellmodeller/data/ex1_simpleGrowth-18-06-22-15-40/step-%05d.png"
+#afname = "/Users/Ignacio/cellmodeller/data/Tutorial_1a-18-04-10-17-59/step-%05d.png"
+astartframe = 250
 anframes = 20
-adt = 10 #There's a bit of trouble with this
+adt = 5 #distance between the steps
 agridfactor = 64 #pixels per grid
 grid,cs,ims = main(afname,astartframe,anframes,adt,agridfactor,forwards = False, GridMethod = 1)

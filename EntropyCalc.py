@@ -10,14 +10,20 @@ import infotheory as IT
 
 def calculate_average(ensemble,attribute):
     avg = 0
+    n = 0
     for id in ensemble.cells.keys():
-        cell_atr = getattr(ensemble.cells[id],attribute)
-        avg += cell_atr
+        cell_atr = getattr(ensemble.cells[id],attribute, None)
+        if cell_atr:
+            avg += cell_atr
+            n += 1
     ensemble.averages[attribute] = avg/len(ensemble.cells)
     
 def histogram_ensemble(ensemble,attribute,nbins,skip):
-    attrib_list = np.array([getattr(ensemble.cells[id],attribute) for id in ensemble.cells.keys()])
-    hist,attr_edge = np.histogram(attrib_list[attrib_list>=skip],bins = nbins)
+    attrib_list = [getattr(ensemble.cells[id],attribute,np.nan) for id in ensemble.cells.keys()]
+    attrib_arr = np.array(attrib_list)
+    
+    attrib_arr = attrib_arr[~np.isnan(attrib_arr)]
+    hist,attr_edge = np.histogram(attrib_arr[attrib_arr>=skip],bins = nbins)
     return hist,attr_edge,attrib_list
 
 def entropycalc(grid,attribute,x,y,nbins,skip):
@@ -25,7 +31,11 @@ def entropycalc(grid,attribute,x,y,nbins,skip):
         if grid[t,x,y].actualcells != 0:
             histogram,attr_edges,attrib_list = histogram_ensemble(grid[t,x,y],attribute,nbins,skip)
             grid[t,x,y].entropy[attribute] = IT.entropy(histogram)
-        
+
+
+
+
+
 def addentropy(grid,attribute,nbins,skip):
     #attribute = attribute_analysis()
     for it in range(grid.nframes):
@@ -36,12 +46,18 @@ def addentropy(grid,attribute,nbins,skip):
     for ix in range(grid.gx):
         for iy in range(grid.gy):
                 entropycalc(grid,attribute,ix,iy,nbins,skip)
+
     
 x,y,t = grid.gx/2,grid.gy/2,grid.nframes/2
-idd = grid[t,x,y].cells.keys()[0]
+idd = grid[t,x,y].cells.keys()[2]
+
+addentropy(grid,'vx',256,0)
+'''
 for item in vars(grid[t,x,y].cells[idd]):
     if type(getattr(grid[t,x,y].cells[idd],item)) == int or type(getattr(grid[t,x,y].cells[idd],item)) == float:
         addentropy(grid,item,20,0)
+'''
+    
 
 
 
