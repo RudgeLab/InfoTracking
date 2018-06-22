@@ -26,7 +26,7 @@ def entropycalc(grid,attribute,x,y,nbins,skip):
             histogram,attr_edges,attrib_list = histogram_ensemble(grid[t,x,y],attribute,nbins,skip)
             grid[t,x,y].entropy[attribute] = IT.entropy(histogram)
         
-def main(grid,attribute,nbins,skip):
+def addentropy(grid,attribute,nbins,skip):
     #attribute = attribute_analysis()
     for it in range(grid.nframes):
         for ix in range(grid.gx):
@@ -37,10 +37,13 @@ def main(grid,attribute,nbins,skip):
         for iy in range(grid.gy):
                 entropycalc(grid,attribute,ix,iy,nbins,skip)
     
-                
-                    
-        
-main(grid,'cellAge',20,0)
+x,y,t = grid.gx/2,grid.gy/2,grid.nframes/2
+idd = grid[t,x,y].cells.keys()[0]
+for item in vars(grid[t,x,y].cells[idd]):
+    if type(getattr(grid[t,x,y].cells[idd],item)) == int or type(getattr(grid[t,x,y].cells[idd],item)) == float:
+        addentropy(grid,item,20,0)
+
+
 
 '''    
 def coolhist():
