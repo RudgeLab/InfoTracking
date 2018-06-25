@@ -50,7 +50,6 @@ class Grid():
       
         
 class Ensemble():
->>>>>>> e6adbe7924929a990c58f27e9825402d4eb659c3
     def __init__(self,frame,ix,iy,px0,py0):
         self.px = px0
         self.py = py0
@@ -68,20 +67,20 @@ class Ensemble():
     def addCell(self,cell,id): #cell = cellstate
         self.cells[id] = cell
 
-    def CalcVel(self,nextstepcells,factor,dt):
+    def CalcVel(self,nextstepcells,lineage,factor,dt):
         dx,dy = 0,0
         for id,next_cell in nextstepcells.iteritems():
             dx_cell = 0
             dy_cell = 0
             try:
-                dx_cell = nextstepcell.pos[0]-self.cells[id].pos[0]
-                dy_cell = nextstepcell.pos[1]-self.cells[id].pos[1]
+                dx_cell = next_cell.pos[0]-self.cells[id].pos[0]
+                dy_cell = next_cell.pos[1]-self.cells[id].pos[1]
                 self.actualcells +=1
             except KeyError:
                 # Previous cell does not exist, use parent cell
-                pid = nextstepcells[id].parent
-                dx_cell = nextstepcell.pos[0]-self.cells[pid].pos[0]
-                dy_cell = nextstepcell.pos[1]-self.cells[pid].pos[1]
+                pid = lineage[id]
+                dx_cell = next_cell.pos[0]-self.cells[pid].pos[0]
+                dy_cell = next_cell.pos[1]-self.cells[pid].pos[1]
                 self.skipped +=1
                 self.actualcells += 0.5 # Count as 1/2 to take average of children
             dx += dx_cell
@@ -124,6 +123,7 @@ def main(fname,startframe,nframes,dt,gridfac,worldsize = 250.0, forwards = True,
         imgs = np.array([plt.imread(open(fname%(startframe+(nframes-i)*dt))) for i in range(nframes)]) #backwards
      
     csa = np.array([element['cellStates'] for element in data])
+    lina = np.array([element['lineage'] for element in data])
     
     imagesize = imgs[0].shape[0]
     resizing= imagesize/worldsize 
@@ -150,7 +150,7 @@ def main(fname,startframe,nframes,dt,gridfac,worldsize = 250.0, forwards = True,
         skip,cellno,actual = 0,0,0
         for ix in range(gx):
             for iy in range(gy):
-                grid[t,ix,iy].CalcVel(csa[t+1],resizing,dt) 
+                grid[t,ix,iy].CalcVel(csa[t+1],lina[t+1],resizing,dt) 
                 skip,cellno,actual = skip+grid[t,ix,iy].skipped,cellno+len(grid[t,ix,iy].cells),actual+grid[t,ix,iy].actualcells
                 #Should we remove skipped cells? might affect entropy flux calculation  
                 #Move grids t+1:
@@ -158,7 +158,7 @@ def main(fname,startframe,nframes,dt,gridfac,worldsize = 250.0, forwards = True,
                 grid[t+1,ix,iy].py = grid[t,ix,iy].py + grid[t,ix,iy].vy*dt
         print 'Skipped', skip,'ids, which should match this number:', cellno-actual
      
-        
+         
     return grid,csa,imgs
 
 def squareplot(x,y,dgx,dgy):
@@ -179,9 +179,9 @@ def plott(grid,imgs,gx,gy,dgx,dgy):
         plt.pause(2)
        
 
-afname = "/home/inmedina/cellmodeller/data/ex1_simpleGrowth-18-06-15-12-54/step-%05d.png"
+afname = "/Users/timrudge/cellmodeller/data/testing-18-06-25-01-09/step-%05d.png"
 astartframe = 10
 anframes = 20
-adt = 10 #There's a bit of trouble with this
+adt = 1 #There's a bit of trouble with this
 agridfactor = 64 #pixels per grid
 grid,cs,ims = main(afname,astartframe,anframes,adt,agridfactor,forwards = False, GridMethod = 1)
