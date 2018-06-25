@@ -109,6 +109,31 @@ def analyse_region(im1,im2, w,h, vx_max, vy_max, px1,py1, px2,py2, nbins, range_
     #plt.plot(-hz[9,:])
     return hy,hy_cond_x, mi, hz
 
+def velocity_dist(L, vx_max,vy_max):
+    '''
+    Estimate velocity variance by maximising expectation of log likelihood
+    
+    Computes the weighted sums over the velocity range: 
+        
+        mean = z0 = (1/N)*sum(L*z)
+        var = (1/N)*sum{ L*(z-z0)^2 }
+
+    z = displacement
+    N = total number of displacement grid points
+    
+    L = log likelihood array
+    
+    vx_max, vy_max = range of displacement grid points
+    '''
+    
+    N = len(L.ravel())
+    x = np.arange(-vx_max,vx_max+1)
+    y = np.arange(-vy_max,vy_max+1)
+    vy,vx = np.meshgrid(x,y)
+    mean = np.sum(v*L)
+    var = np.sum(v*v*L)/N
+    return var
+    
 def find_peak(arr):
     '''
     Find location (x,y) of peak in values of array arr
@@ -226,7 +251,7 @@ def main(fname,startframe,nframes,step,gridfact, forwards = True, GridMethod = N
     vmax = 7
     pos = np.zeros((gx,gy,nframes,2))
     llikelihood = np.zeros((gx,gy,nframes,vmax*2+1,vmax*2+1))
-    roi = np.zeros((gx,gy,nframes,gside,gside,4))
+    roi = np.zeros((gx,gy,nframes,gside,gside))
     grid = np.zeros((nframes,gx,gy,5))
 
     # Set initial grid positions
@@ -269,7 +294,7 @@ def main(fname,startframe,nframes,step,gridfact, forwards = True, GridMethod = N
                         #plt.plot(hzgrid.ravel(), ll.ravel())
                         roi[ix,iy,i+1,:,:] = im2_roi
                         grid[i,ix,iy,:] += [px2-px,py2-py,1,0,0]
-                        grid[i+1,ix,iy] += [0,0,0,grid[i,ix,iy,0]*step,grid[i,ix,iy,1]*step]
+                        grid[i+1,ix,iy] += [0,0,0,grid[i,ix,iy,0],grid[i,ix,iy,1]]
                         '''print 'vel = ', px2-px, py2-py'''
                     else:
                         pos[ix,iy,i+1,:] = [px,py]
