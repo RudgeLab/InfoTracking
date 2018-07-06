@@ -1,78 +1,23 @@
-#importa grid de PGE
-#histograma de velocidades de cada gridcell para todos los t
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import norm
 import matplotlib.mlab as mlab
+import infotheory as IT
 
-def mainEC(grid,AV):
-    times = []
-    for t in range(len(grid.frames)):
-        variable = []
-        for ix in range(grid.gx):
-            for iy in range(grid.gy):
-                
-                if AV == 'vel':
-                    AV = ['vx','vy']
-                    vx = getattr(grid[t,ix,iy],AV[0])
-                    vy = getattr(grid[t,ix,iy],AV[1])
-                    elem = np.sqrt(((vx)**2)+(vy)**2)
-                    
-                if AV == 'x':
-                    aux = []
-                    for id in grid[t,ix,iy].cells.keys():
-                        var = getattr(grid[t,ix,iy].cells[id],'x')
-                        aux.append(var)
-                    elem = np.ravel(np.array(aux))
-                
-                variable.append(elem)
-            times.append(variable)     
-    return times
+#for a single gridsquare in all times calculate average X
+#Calculate histogram
+#Input into infotheory.py
 
 
-def alltosingle(variab):
-    variab = np.array(variab)
-    variab = np.ravel(variab)
-    return variab
-
-def makehist(allvars,nbins,skip):
-    plt.hist(allvars[allvars >=skip],bins = nbins,normed = 1,edgecolor='#E6E6E6', color='#EE6666')
-             
+x,y,t = grid.gx/2,grid.gy/2,grid.nframes/2
+idd = grid[t,x,y].cells.keys()[0]
+for item in vars(grid[t,x,y].cells[idd]):
+    print "Calculating entropy of "+item
     
-def coolhist():
-    
-    #ax = plt.axes(axisbg='#E6E6E6')
-    ax = plt.axes()
-    ax.set_axisbelow(True)
-    plt.grid(color='w', linestyle='solid')
-    for spine in ax.spines.values():
-        spine.set_visible(False)
-    ax.xaxis.tick_bottom()
-    ax.yaxis.tick_left()
-    ax.tick_params(colors='gray', direction='out')
-    for tick in ax.get_xticklabels():
-        tick.set_color('gray')
-    for tick in ax.get_yticklabels():
-        tick.set_color('gray')
+    if type(getattr(grid[t,x,y].cells[idd],item)) == int or type(getattr(grid[t,x,y].cells[idd],item)) == float:
         
-def fitcurve(allvars,nbins,skip):
-    (mu, sigma) = norm.fit(allvars[allvars >=skip])
-    n, bins, patches =  plt.hist(allvars[allvars >=skip],bins = nbins,normed = 1,edgecolor='#E6E6E6', color='#EE6666')
-    y = mlab.normpdf( bins, mu, sigma)
-    plt.plot(bins, y, 'r--', linewidth=2)
-    plt.show()
-    
-alltimes = mainEC(grid,'vel')
-allvars = alltosingle(alltimes)
-#coolhist()
-fitcurve(allvars,15,0)
-makehist(allvars,15,0)
-'''
-for i in range(len(alltimes)):
-    plt.clf()
-    plt.hold(True)
-    fitcurve(alltimes[i],15,0.05)
-    plt.show()
-    plt.hold(False)
-    plt.pause(0.5)
-'''
+        calc_average_all(grid,attribute)
+        calc_entropy_all(grid,attribute,100,0)
+        
+calc_average_all(grid,attribute)
+calc_entropy_all(grid,'vx',100,0)
