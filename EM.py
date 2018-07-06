@@ -69,6 +69,7 @@ def analyse_region(im1,im2, w,h, vx_max, vy_max, px1,py1, px2,py2, nbins, range_
             print im2_roi_offset
             print im2_roi
             '''
+
             hgram_diff, edges = np.histogram( (im2_roi_offset-im1_roi).ravel(), \
                                                     bins=nbins, \
                                                     range=(0,range_mx))
@@ -194,15 +195,15 @@ def main(fname,startframe,nframes,step,gridfact, forwards = True, GridMethod = N
         im1 = [plt.imread(fname%(startframe+(nframes-i)*step)).astype(np.float32) for i in range(nframes)] #backwards
         im2 = [plt.imread(fname%(startframe+(nframes-1-i)*step)).astype(np.float32) for i in range(nframes)] #backwards
         
-    w,h = im1[0].shape[0], im1[0].shape[1]
-
+    w,h,c = im1[0].shape[0], im1[0].shape[1], 1
+    
 
     # Grid dimensions and spacing for regions of interest
     gx,gy = int(np.floor(w/gridfact)),int(np.floor(h/gridfact))
     dgx,dgy = gridfact, gridfact
     gside = gridfact
 
-    print "Image dimensions: ",w,h
+    print "Image dimensions: ",w,h,c
     print "Grid dimensions: ",gx,gy
 
     print "Image intensity range:"
@@ -223,10 +224,10 @@ def main(fname,startframe,nframes,step,gridfact, forwards = True, GridMethod = N
 
 
     # Compute velocity and position of ROIs based on maximum mutual information translation
-    vmax = 7
+    vmax = 25 
     pos = np.zeros((gx,gy,nframes,2))
     llikelihood = np.zeros((gx,gy,nframes,vmax*2+1,vmax*2+1))
-    roi = np.zeros((gx,gy,nframes,gside,gside,4))
+    roi = np.zeros((gx,gy,nframes,gside,gside))
     grid = np.zeros((nframes,gx,gy,5))
 
     # Set initial grid positions
@@ -282,14 +283,20 @@ def main(fname,startframe,nframes,step,gridfact, forwards = True, GridMethod = N
                     #    plt.colorbar()
     
             #print 'pos[i+1] =', pos[ix,iy,i+1,:]
-        '''
+        
         pos.tofile('pos.np', sep=',')
         roi.tofile('roi.np', sep=',')
         llikelihood.tofile('ll.np', sep=',')
-        '''
+        
         print "Done"
         return grid
 
 # Run analysis
 if __name__ == "__main__": 
-    main()
+    main('/home/timrudge/cellmodeller/data/info_tracking-18-06-08-12-59/step-%05d.png' \
+            ,360 \
+            ,5 \
+            ,2 \
+            ,64 \
+            ,False, GridMethod = 1)
+    pass
