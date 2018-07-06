@@ -40,18 +40,24 @@ class Ensemble(Grid):
         self.cells = {}
         self.skipped = 0
         self.actualcells = 0
+
     def addCell(self,cell,id): #cell = cellstate
         self.cells[id] = cell
+
     def CalcVel(self,nextstepcells,factor,dt):
         dx,dy = 0,0
-        for id in self.cells.keys():
+        for id,next_cell in nextstepcells.iteritems():
             dx_cell = 0
             dy_cell = 0
             try:
-                dx_cell = nextstepcells[id].pos[0]-self.cells[id].pos[0]
-                dy_cell = nextstepcells[id].pos[1]-self.cells[id].pos[1]
+                dx_cell = nextstepcell.pos[0]-self.cells[id].pos[0]
+                dy_cell = nextstepcell.pos[1]-self.cells[id].pos[1]
                 self.actualcells +=1
             except KeyError:
+                # Previous cell does not exist, use parent cell
+                pid = nextstepcells[id].parent
+                dx_cell = nextstepcell.pos[0]-self.cells[pid].pos[0]
+                dy_cell = nextstepcell.pos[1]-self.cells[pid].pos[1]
                 self.skipped +=1
             dx += dx_cell
             dy += dy_cell
