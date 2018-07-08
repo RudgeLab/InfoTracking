@@ -48,16 +48,18 @@ class Grid():
                 for (id,cell) in csa[t].iteritems():
                     if self[t,ix,iy].checkcellingrid(cell,self.resize,self.dgx,self.dgy,self.center) == True:
                     #if checkcellingrid(cell,grid[t,ix,iy],resizing,dgx,dgy,grid.center) == True:
-                        self[t,ix,iy].addCell(cell,id)
+                        print "adding cell"
+                        self[t,ix,iy].addCell(cell)
                         
     def calc_velocities_of_ensembles(self,cellstates,lineage,t):
         skip,cellno,actual = 0,0,0
         for ix in range(self.gx):
             for iy in range(self.gy):
-                self[t,ix,iy].CalcVel(cellstates[t+1],lineage[t+1],self.resize,self.dt) 
-                skip,cellno,actual = skip+self[t,ix,iy].skipped,cellno+len(self[t,ix,iy].cells),actual+self[t,ix,iy].actualcells
-                self[t+1,ix,iy].px = self[t,ix,iy].px + self[t,ix,iy].vx*self.dt
-                self[t+1,ix,iy].py = self[t,ix,iy].py + self[t,ix,iy].vy*self.dt
+                if len(self[t,ix,iy].cells) != 0:
+                    self[t,ix,iy].CalcVel(cellstates[t], cellstates[t+1], lineage[t+1], self.resize, self.dt) 
+                    skip,cellno,actual = skip+self[t,ix,iy].skipped,cellno+len(self[t,ix,iy].cells),actual+self[t,ix,iy].actualcells
+                    self[t+1,ix,iy].px = self[t,ix,iy].px + self[t,ix,iy].vx*self.dt
+                    self[t+1,ix,iy].py = self[t,ix,iy].py + self[t,ix,iy].vy*self.dt
         print t,'- Skipped', skip,'ids, which should match this number:', cellno-actual
     
     def calc_average_all(self,attribute):
@@ -130,32 +132,44 @@ class Ensemble():
         self.actualcells = 0
         self.resize = resize
         
-    def addCell(self,cell,id): #cell = cellstate
+    def addCell(self,cell): #cell = cellstate
+        id = cell.id
+        print "adding cell ", id
         self.cells[id] = cell
         self.cells[id].vx = 0
         self.cells[id].vy = 0
 
-    def CalcVel(self,nextstepcells,lineage,factor,dt):
+    def CalcVel(self,cellstate,nextstepcells,lineage,factor,dt):
         dx,dy = 0,0
+        
+        print "Lineage: "
+        print lineage
+        
+        print "cells "
+        print self.cells
+        
+        print "nextstepcells "
+        print nextstepcells
     
         for id,next_cell in nextstepcells.iteritems():
             dx_cell = 0
             dy_cell = 0
             
-            try:
+            if id in self.cells.keys():
                 dx_cell = next_cell.pos[0]-self.cells[id].pos[0]
                 dy_cell = next_cell.pos[1]-self.cells[id].pos[1]
                 self.cells[id].vx = dx_cell
                 self.cells[id].vy = dy_cell
                 self.actualcells +=1
-                
-            except KeyError:
+            else:
                 # Previous cell does not exist, use parent cell
-                pid = next_cell.parent
-                dx_cell = next_cell.pos[0]-self.cells[pid].pos[0]
-                dy_cell = next_cell.pos[1]-self.cells[pid].pos[1]
-                self.cells[id].vx = dx_cell
-                self.cells[id].vy = dy_cell
+                print("Cell ",id)
+                pid = lineage[id]
+                print "pid ", pid
+                dx_cell = next_cell.pos[0]-cellstate[pid].pos[0]
+                dy_cell = next_cell.pos[1]-cellstate[pid].pos[1]
+                self.cells[pid].vx = dx_cell
+                self.cells[pid].vy = dy_cell
                 self.actualcells += 1 # Count as 1/2 to take average of children
                 
             dx += dx_cell
@@ -168,6 +182,7 @@ class Ensemble():
         self.averages['vy'] = -factor*dy/dt
         self.vx = factor*dx/dt
         self.vy = -factor*dy/dt
+        print 'vx: ', self.vx, 'vy: ', self.vy
         
     def calculate_average(self,attribute):
         avg = 0
@@ -243,6 +258,8 @@ def LoadData(fname,startframe,nframes,dt,forwards = True):
         imgs = np.array([plt.imread(open(fname%(startframe+(nframes-i)*dt))) for i in range(nframes)]) #backwards
        
     cellstates = np.array([element['cellStates'] for element in data])
+    print "cellstates"
+    print cellstates[0]
     lineage = np.array([element['lineage'] for element in data])
     
     return data,imgs,cellstates,lineage
@@ -316,13 +333,12 @@ def main(fname,startframe,nframes,dt,gridfac,worldsize = 250.0, forwards = True,
     grid = Grid(nframes,gx,gy,dgx,dgy,center,resize,dt)
     
     for t in range(nframes-1):
-        
+        print "*** Frame = ", t
         #Add cellstates to grid at time t :
         
         grid.add_cells_to_ensembles(cellstates,t)
         
         #calc velocity of grid at t = 0 to t+1:
-        
         grid.calc_velocities_of_ensembles(cellstates,lineage,t)
         
     return grid,cellstates,imgs
@@ -337,10 +353,10 @@ def plott(grid,imgs,gx,gy,dgx,dgy):
         plt.pause(2)
        
 #File test parameters
-#afname = "/Users/timrudge/cellmodeller/data/testing-18-06-25-01-09/step-%05d.png"
-afname = "/Users/Ignacio/cellmodeller/data/IICProject-18-06-26-18-10/step-%05d.png"
-astartframe = 10
+afname = "/home/timrudge/cellmodeller/data/info_tracking-18-06-08-12-59/step-%05d.png"
+#afname = "/Users/Ignacio/cellmodeller/data/IICProject-18-06-26-18-10/step-%05d.png"
+astartframe = 0
 anframes = 20
-adt = 1 
+adt = 2
 agridfactor = 64 #pixels per grid
-grid,cst,imgs = main(afname,astartframe,anframes,adt,agridfactor,forwards = False, GridMethod = 1)
+grid,cst,imgs = main(afname,astartframe,anframes,adt,agridfactor,forwards = True, GridMethod = 1)
