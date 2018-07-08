@@ -61,7 +61,15 @@ class Grid():
                     self[t+1,ix,iy].px = self[t,ix,iy].px + self[t,ix,iy].vx*self.dt
                     self[t+1,ix,iy].py = self[t,ix,iy].py + self[t,ix,iy].vy*self.dt
         print t,'- Skipped', skip,'ids, which should match this number:', cellno-actual
-    
+        
+    def calc_accel_of_ensemble(self,ix,iy):
+        acc_array = np.array([])
+        for it in range(self.nframes-1):
+            accel_t = (self[it,ix,iy].velocity - self[it+1,ix,iy].velocity)/self.dt
+            self[it,ix,iy].accel = accel_t
+            acc_array = np.append(acc_array,accel_t)
+        return acc_array
+        
     def calc_average_all(self,attribute):
         for it in range(self.nframes):
             for ix in range(self.gx):
@@ -131,7 +139,7 @@ class Ensemble():
         self.skipped = 0
         self.actualcells = 0
         self.resize = resize
-        
+        self.velocity = 0
     def addCell(self,cell): #cell = cellstate
         id = cell.id
         print "adding cell ", id
@@ -166,12 +174,13 @@ class Ensemble():
                 print("Cell ",id)
                 pid = lineage[id]
                 print "pid ", pid
+                '''
                 dx_cell = next_cell.pos[0]-cellstate[pid].pos[0]
                 dy_cell = next_cell.pos[1]-cellstate[pid].pos[1]
                 self.cells[pid].vx = dx_cell
                 self.cells[pid].vy = dy_cell
                 self.actualcells += 1 # Count as 1/2 to take average of children
-                
+                '''
             dx += dx_cell
             dy += dy_cell
             
@@ -182,6 +191,7 @@ class Ensemble():
         self.averages['vy'] = -factor*dy/dt
         self.vx = factor*dx/dt
         self.vy = -factor*dy/dt
+        self.velocity = np.sqrt((self.vx**2) + (self.vy**2))
         print 'vx: ', self.vx, 'vy: ', self.vy
         
     def calculate_average(self,attribute):
@@ -353,10 +363,10 @@ def plott(grid,imgs,gx,gy,dgx,dgy):
         plt.pause(2)
        
 #File test parameters
-afname = "/home/timrudge/cellmodeller/data/info_tracking-18-06-08-12-59/step-%05d.png"
-#afname = "/Users/Ignacio/cellmodeller/data/IICProject-18-06-26-18-10/step-%05d.png"
+#afname = "/home/timrudge/cellmodeller/data/info_tracking-18-06-08-12-59/step-%05d.png"
+afname = "/Users/Ignacio/cellmodeller/data/IICProject-18-06-26-18-10/step-%05d.png"
 astartframe = 0
-anframes = 20
-adt = 2
+anframes = 45
+adt = 20
 agridfactor = 64 #pixels per grid
-grid,cst,imgs = main(afname,astartframe,anframes,adt,agridfactor,forwards = True, GridMethod = 1)
+grid,cst,imgs = main(afname,astartframe,anframes,adt,agridfactor,forwards = False, GridMethod = 1)
