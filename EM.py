@@ -52,6 +52,12 @@ def analyse_region(im1,im2, w,h, vx_max, vy_max, px1,py1, px2,py2, nbins, range_
             bins=nbins, \
             range=(0,range_mx))
     Hx = infotheory.entropy(hgram)
+    if Hx<=1:
+        print 'Entropy of region (%d,%d) too low (%f), skipping'%(px1,py1,Hx)
+        return None
+    else:
+        print 'Entropy of region (%d,%d) (%f)'%(px1,py1,Hx)
+
     for vx in range(-vx_max,vx_max+1):
         for vy in range(-vx_max,vy_max+1):
             #print vx, vy
@@ -69,6 +75,11 @@ def analyse_region(im1,im2, w,h, vx_max, vy_max, px1,py1, px2,py2, nbins, range_
             print im2_roi_offset
             print im2_roi
             '''
+            hgram, edges = np.histogram( im2_roi.ravel(), \
+                                                bins=nbins, \
+                                                range=(0,range_mx))
+            hy_val = infotheory.entropy(hgram)
+    
             hgram_diff, edges = np.histogram( (im2_roi_offset-im1_roi).ravel(), \
                                                     bins=nbins, \
                                                     range=(0,range_mx))
@@ -86,22 +97,18 @@ def analyse_region(im1,im2, w,h, vx_max, vy_max, px1,py1, px2,py2, nbins, range_
                                                     im2_roi.ravel(), \
                                                     bins=nbins, \
                                                     range=[(0,range_mx),(0,range_mx)])
-            hy_val = infotheory.entropy(hgram, ax=0)
-            if hy_val<1.0:
-                #print 'Entropy of region (%d,%d) too low (%f), skipping'%(px1,py1,hy_val)
-                return None
-
+            
             hy_cond_x_val  = infotheory.conditional_entropy(hgram, ax=1)
             hy_cond_x_val_offset  = infotheory.conditional_entropy(hgram_offset, ax=1)
             hy_cond_x_val_offset_self  = infotheory.conditional_entropy(hgram_offset_self, ax=1)
             mi_val = infotheory.mutual_information(hgram)
             mi_val_offset = infotheory.mutual_information(hgram_offset)
 
-            hy[vx+vx_max,vy+vy_max] = hy_val_offset
+            hy[vx+vx_max,vy+vy_max] = hy_val
             hy_cond_x[vx+vx_max,vy+vy_max] = hy_cond_x_val_offset
             mi[vx+vx_max,vy+vy_max] = mi_val_offset
 
-            hz[vx+vx_max,vy+vy_max] = infotheory.entropy(hgram_diff) + hy_val_offset
+            hz[vx+vx_max,vy+vy_max] = hy_cond_x_val_offset_self
             #hy_cond_x_val_offset_self - hy_cond_x_val_offset 
             #mi_val - infotheory.joint_entropy(hgram) + infotheory.joint_entropy(hgram_offset)
     # Return array grid of entropy measures, and 
@@ -143,14 +150,23 @@ def find_peak(arr):
     w,h = arr.shape
     ww = (w-1)/2
     hh = (h-1)/2
+    
+    from scipy.ndimage.filters import maximum_filter
+    maxima = maximum_filter(arr,15)
+    maxpos = np.where(arr==maxima)
 
     mx = np.max(arr,axis=(0,1))
     mn = np.min(arr,axis=(0,1))
-    pk = np.abs(arr-mn) > 0.95*(mx-mn)
+    pk = np.abs(arr-mn) > 0.75*(mx-mn)
     pky,pkx = np.meshgrid(np.arange(-ww,ww+1), np.arange(-hh,hh+1))
-    x = np.sum(pkx*pk)/np.sum(pk)
-    y = np.sum(pky*pk)/np.sum(pk)
-    return x,y
+    weight = pk*(arr-mn)
+    x = np.sum(pkx*weight)/np.sum(weight)
+    y = np.sum(pky*weight)/np.sum(weight)
+    
+    #maxpos = np.where(arr==mx)
+    #ix,iy = np.mean(maxpos[0]), np.mean(maxpos[1])
+    #x,y = ix-ww,iy-ww
+    return x,y,mx
 
 # Compute conditional entropy at different uniform velocities
 def track_cond_entropy(im1,im2, vx_max,vy_max, px1,py1, gs, nbins=256, range_mx=2**8, ofname=None):
@@ -170,14 +186,14 @@ def track_cond_entropy(im1,im2, vx_max,vy_max, px1,py1, gs, nbins=256, range_mx=
     im1_roi = im1[px1:px1+gs,py1:py1+gs]
     im2_roi = im2[px1:px1+gs,py1:py1+gs]
 
-    if np.max(hy_grid, axis=(0,1))<1.0:
+    if np.max(hy_grid, axis=(0,1))<=1:
         # Entropy too low, probably background
         px2,py2 = px1,py1
-        return px2,py2,0,0,im2_roi
+        return px2,py2,0,0,0,im1_roi,im2_roi,im2_roi
     else:
         #Find peak in I(im1,im2)/H(im2) to compute mean velocity estimate
-        ll = -hy_cond_x_grid  #mi_grid/hy_grid 
-        zxpk,zypk = find_peak(ll)
+        ll = -hy_cond_x_grid #mi_grid/hy_grid 
+        zxpk,zypk,mxll = find_peak(ll)
 
         # Estimate new mean position as peak of I(im2,im2)/H(im2)
         px2 = px1 + zxpk
@@ -186,7 +202,7 @@ def track_cond_entropy(im1,im2, vx_max,vy_max, px1,py1, gs, nbins=256, range_mx=
         # Shifted 2nd image ROI
         im2_roi_shifted = im2[px2:px2+gs,py2:py2+gs]
 
-        return px2,py2,ll,hz_grid,im2_roi_shifted
+        return px2, py2, ll, mxll, hz_grid, im1_roi, im2_roi, im2_roi_shifted
 
 
 
@@ -225,7 +241,7 @@ def main(fname,startframe,nframes,step,gridfact, forwards = True, GridMethod = N
     # Grid dimensions and spacing for regions of interest
     gx,gy = int(np.floor(w/gridfact)),int(np.floor(h/gridfact))
     dgx,dgy = gridfact, gridfact
-    gside = gridfact
+    gside = gridfact*4
 
     print "Image dimensions: ",w,h
     print "Grid dimensions: ",gx,gy
@@ -250,13 +266,17 @@ def main(fname,startframe,nframes,step,gridfact, forwards = True, GridMethod = N
     # Compute velocity and position of ROIs based on maximum mutual information translation
     vmax = 7
     pos = np.zeros((gx,gy,nframes,2))
+    mxll = np.zeros((gx,gy,nframes))
     llikelihood = np.zeros((gx,gy,nframes,vmax*2+1,vmax*2+1))
-    roi = np.zeros((gx,gy,nframes,gside,gside))
+    llself = np.zeros((gx,gy,nframes,vmax*2+1,vmax*2+1))
+    roi1 = np.zeros((gx,gy,nframes,gside,gside))
+    roi2 = np.zeros((gx,gy,nframes,gside,gside))
+    roi2_shifted = np.zeros((gx,gy,nframes,gside,gside))
     grid = np.zeros((nframes,gx,gy,5))
 
     # Set initial grid positions
-    px0 = 0 #gside + vmax
-    py0 = 0 #gside + vmax
+    px0 = 8 #gside + vmax
+    py0 = 8 #gside + vmax
     if GridMethod == 1:
         for ix in range(gx):
             for iy in range(gy):
@@ -286,20 +306,27 @@ def main(fname,startframe,nframes,step,gridfact, forwards = True, GridMethod = N
                                                 ofname=ofname)
                     grid[i+1,ix,iy] = [0,0,0,grid[i,ix,iy,3],grid[i,ix,iy,4]]
                     if tracking:
-                        px2,py2,ll,hzgrid,im2_roi = tracking
+                        px2,py2,ll,maxll,hzgrid,im1_roi,im2_roi,im2_roi_shifted = tracking
                         pos[ix,iy,i+1,:] = [px2,py2]
+                        mxll[ix,iy,i+1] = maxll
                         print "vel ", px2-px, py2-py
                         llikelihood[ix,iy,i+1,:,:] = ll
+                        llself[ix,iy,i+1,:,:] = hzgrid
                         #plt.figure()
                         #plt.plot(hzgrid.ravel(), ll.ravel())
-                        roi[ix,iy,i+1,:,:] = im2_roi
+                        roi1[ix,iy,i+1,:,:] = im1_roi
+                        roi2[ix,iy,i+1,:,:] = im2_roi
+                        roi2_shifted[ix,iy,i+1,:,:] = im2_roi_shifted
                         grid[i,ix,iy,:] += [px2-px,py2-py,1,0,0]
                         grid[i+1,ix,iy] += [0,0,0,grid[i,ix,iy,0],grid[i,ix,iy,1]]
                         '''print 'vel = ', px2-px, py2-py'''
                     else:
                         pos[ix,iy,i+1,:] = [px,py]
-                        llikelihood[ix,iy,i+1,:,:] = 0.0
-                        roi[ix,iy,i+1,:,:] = 0
+                        llikelihood[ix,iy,i+1,:,:] = 0
+                        llself[ix,iy,i+1,:,:] = 0
+                        roi1[ix,iy,i+1,:,:] = 0
+                        roi2[ix,iy,i+1,:,:] = 0
+                        roi2_shifted[ix,iy,i+1,:,:] = 0
                         grid[i,ix,iy,:] = [0,0,0,px,py]
     
                     #plt.ylim([0,30])
@@ -307,14 +334,24 @@ def main(fname,startframe,nframes,step,gridfact, forwards = True, GridMethod = N
                     #    plt.colorbar()
     
             #print 'pos[i+1] =', pos[ix,iy,i+1,:]
-        '''
+        
         pos.tofile('pos.np', sep=',')
-        roi.tofile('roi.np', sep=',')
+        roi1.tofile('roi1.np', sep=',')
+        roi2.tofile('roi2.np', sep=',')
+        roi2_shifted.tofile('roi2_shifted.np', sep=',')
         llikelihood.tofile('ll.np', sep=',')
-        '''
+        llself.tofile('llself.np', sep=',')
+        mxll.tofile('mxll.np', sep=',')
+
         print "Done"
         return grid
 
 # Run analysis
 if __name__ == "__main__": 
-    main()
+    #def main(fname,startframe,nframes,step,gridfact, forwards = True, GridMethod = None):
+    main('/Users/timrudge/cellmodeller/data/testing-18-06-25-01-09/step-%05d.png', \
+             240, 2, 1, 16, forwards=True)
+    #main('/Users/timrudge/CavendishMicroscopy/10.01.16/Pos0000/Frame0/Frame0000_regStep%04d.tif', \
+    #         150, 2, 1, 64, forwards=True)
+    #main('/Users/timrudge/AndreaRavasioData/masked image/%02d.tif', \
+    #         20, 2, 1, 16, forwards=True)
