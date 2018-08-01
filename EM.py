@@ -302,7 +302,8 @@ def main(fname,startframe,nframes,step,gridfact, forwards = True, GridMethod = N
                                                 vmax, vmax, \
                                                 px,py, \
                                                 gside, \
-                                                nbins=16, range_mx=max(mx1,mx2), \
+                                                nbins=16, \
+                                                #range_mx=max(mx1,mx2), \
                                                 ofname=ofname)
                     grid[i+1,ix,iy] = [0,0,0,grid[i,ix,iy,3],grid[i,ix,iy,4]]
                     if tracking:
@@ -357,7 +358,7 @@ if __name__ == "__main__":
     #         20, 2, 1, 16, forwards=True)
     main('/home/timrudge/cellmodeller/data/info_tracking-18-06-08-12-59/step-%05d.png' \
             ,360 \
-            ,5 \
             ,2 \
-            ,64 \
-            ,forwards=False, GridMethod = 1)
+            ,2 \
+            ,16 \
+            ,forwards=True, GridMethod = 1)
