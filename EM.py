@@ -349,15 +349,15 @@ def main(fname,startframe,nframes,step,gridfact, forwards = True, GridMethod = N
 # Run analysis
 if __name__ == "__main__": 
     #def main(fname,startframe,nframes,step,gridfact, forwards = True, GridMethod = None):
-    #main('/Users/timrudge/cellmodeller/data/testing-18-06-25-01-09/step-%05d.png', \
-    #         240, 2, 1, 16, forwards=True)
+    main('/Users/timrudge/cellmodeller/data/testing-18-06-25-01-09/step-%05d.png', \
+             240, 2, 1, 16, forwards=True)
     #main('/Users/timrudge/CavendishMicroscopy/10.01.16/Pos0000/Frame0/Frame0000_regStep%04d.tif', \
     #         150, 2, 1, 64, forwards=True)
     #main('/Users/timrudge/AndreaRavasioData/masked image/%02d.tif', \
     #         20, 2, 1, 16, forwards=True)
-    main('/home/timrudge/cellmodeller/data/info_tracking-18-06-08-12-59/step-%05d.png' \
-            ,360 \
-            ,5 \
-            ,2 \
-            ,64 \
-            ,forwards=False, GridMethod = 1)
+    #main('/home/timrudge/cellmodeller/data/info_tracking-18-06-08-12-59/step-%05d.png' \
+    #        ,360 \
+    #        ,5 \
+    #        ,2 \
+    #        ,64 \
+    #        ,forwards=False, GridMethod = 1)
