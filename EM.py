@@ -235,15 +235,15 @@ def main(fname,startframe,nframes,step,gridfact, forwards = True, GridMethod = N
         im1 = [plt.imread(fname%(startframe+(nframes-i)*step)).astype(np.float32) for i in range(nframes)] #backwards
         im2 = [plt.imread(fname%(startframe+(nframes-1-i)*step)).astype(np.float32) for i in range(nframes)] #backwards
         
-    w,h = im1[0].shape[0], im1[0].shape[1]
-
+    w,h,c = im1[0].shape[0], im1[0].shape[1], 1
+    
 
     # Grid dimensions and spacing for regions of interest
     gx,gy = int(np.floor(w/gridfact)),int(np.floor(h/gridfact))
     dgx,dgy = gridfact, gridfact
     gside = gridfact*4
 
-    print "Image dimensions: ",w,h
+    print "Image dimensions: ",w,h,c
     print "Grid dimensions: ",gx,gy
 
     print "Image intensity range:"
@@ -264,7 +264,7 @@ def main(fname,startframe,nframes,step,gridfact, forwards = True, GridMethod = N
 
 
     # Compute velocity and position of ROIs based on maximum mutual information translation
-    vmax = 7
+    vmax = 25 
     pos = np.zeros((gx,gy,nframes,2))
     mxll = np.zeros((gx,gy,nframes))
     llikelihood = np.zeros((gx,gy,nframes,vmax*2+1,vmax*2+1))
@@ -349,9 +349,15 @@ def main(fname,startframe,nframes,step,gridfact, forwards = True, GridMethod = N
 # Run analysis
 if __name__ == "__main__": 
     #def main(fname,startframe,nframes,step,gridfact, forwards = True, GridMethod = None):
-    main('/Users/timrudge/cellmodeller/data/testing-18-06-25-01-09/step-%05d.png', \
-             240, 2, 1, 16, forwards=True)
+    #main('/Users/timrudge/cellmodeller/data/testing-18-06-25-01-09/step-%05d.png', \
+    #         240, 2, 1, 16, forwards=True)
     #main('/Users/timrudge/CavendishMicroscopy/10.01.16/Pos0000/Frame0/Frame0000_regStep%04d.tif', \
     #         150, 2, 1, 64, forwards=True)
     #main('/Users/timrudge/AndreaRavasioData/masked image/%02d.tif', \
     #         20, 2, 1, 16, forwards=True)
+    main('/home/timrudge/cellmodeller/data/info_tracking-18-06-08-12-59/step-%05d.png' \
+            ,360 \
+            ,5 \
+            ,2 \
+            ,64 \
+            ,forwards=False, GridMethod = 1)
