@@ -1,106 +1,56 @@
 import numpy as np
 
-class CellState:
-    pass
-
 class EnsembleState:
-    def __init__(self, pos_x, pos_y, w, h):
+    def __init__(self, pos, vel, w, h):
         # Initialise the ensemble at a given location
         self.w = w
         self.h = h
-        self.pos_x = pos_x
-        self.pos_y = pos_y
+        self.pos = pos
+        self.vel = vel
 
-class ImageEnsembleState(Ensemble):
-    def __init__(self, pos_x, pos_y, w, h, image_roi):
-        # Ensemble computed from image, stores region of interest at each t
-        super(EnsembleState, self).__init__(pos_x, pos_y, w, h)
-        self.image_roi = np.array((nt,w,h))
-        self.image_roi[0,:,:] = image_roi
-        self.cond_entropy
-
-class ModelEnsembleState(Ensemble):
-    def __init__(self, pos_x, pos_y, w, h, scale):
-        # Ensemble from dictionary of CellModeller CellState objects
-        super(EnsembleState, self).__init__(pos_x, pos_y, w, h)
-        self.scale = scale # Scaling from model position to image coordinate
-        self.cells = {}
-
-    def add_cell(self, cell):
-        self.cells[cell.id] = cell
-
-    def compute_mean_velocity(self, cells2):
-        # cells2 = dictionary of cell states in next time step
-        ncells_common = 0
-        vel_sum = np.zeros((2,))
-        for (id,c) in self.cells:
-            if id in cells2:
-                ncells_common += 1
-                vel_sum += cells2[id].pos - c.pos
-            else:
-                # Here we check parents of cells that have divided
-                for (nid,cnew) in cells2:
-                    if cnew.parent == id:
-                        ncells_common += 1
-                        vel_sum += cnew.pos - c.pos
-        return vel_sum/ncells_common
-                        
-
-class EnsembleGrid:
-    def __init__(self, gx0, gy0, w, h, scale, nt):
-        self.grid_states = {}
-        self.gx0 = gx0
-        self.gy0 = gy0
-        self.nx = nx
-        self.ny = ny
+class ImageEnsembleState():
+    def __init__(self, pos, w, h, image_roi1, image_roi2):
+        # Ensemble computed from image pair, stores regions of interest at t and t+1
         self.w = w
         self.h = h
-        self.scale = scale
-        self.nt = nt
+        self.pos = pos
+        self.vel = vel
+        self.image1 = image1
+        self.image2 = image2
 
-class ModelEnsembleGrid(EnsembleGrid):
-    def __init__(self, gx0, nx, ny, w, h, scale, pickle_fname, step, nt):
-        super(EnsembleGrid, self)(gx0, gy0, w, h, nx, ny, scale, nt)
-        # Initialise with given cells at time t=0
-        fname = pickle_fname%(0)
-        self.add_ensemble_states(fname%0, 0)
-        for i in range(1,nt):
-            t = i*step
-            for ix in range(self.nx):
-                for iy in range(self.ny):
-                    es0 = self.grid_states[(gx,gy,t-step)]
-                    cells = self.get_cell_states(fname%t)
-                    es1 = ModelEnsembleState(
-                    self.grid_states[(gx,gy,t-step)]
-            vel = self.grid_states[
+    def entropy_map(self, vx_max=7, vy_max=7, nbins=16, hmin=1.0):
+        # Compute conditional entropy H(I2|I1) at each displacement
+        vw = vx_max*2 + 1
+        vh = vy_max*2 + 1
+        hy_cond_x = np.zeros((vw,vh))
+        range_mx1 = np.max(image_roi1)
+        range_mx2 = np.max(image_roi2)
+        range_mx = max(range_mx1, range_mx2)
 
-    def get_cell_states(self, picklefile):
-        data = cPickle.load(fname)
-        cells = data['cellStates']
-        return cells
-        
-    def add_ensemble_states(self, fname, t)
-        cells = self.get_cell_states(fname)
-        # Construct the grid by looping over ensemble regions
-        for ix in range(self.nx):
-            for iy in range(self.ny)
-                # Compute ensemble top-left position
-                gx,gy = self.gx0 + self.w*ix, self.gy0 + self.h*iy
-                # Create a new ensemble 
-                es = ModelEnsembleState(gx,gy,self.w,self.h,self.scale)
-                # Find and add all cells to the ensemble that are inside the boundary
-                for (cid,cell) in self.cells:
-                    spos = cell.pos * scale
-                    if spos[0] >= gx and spod[1] >= gy and x < spos[0]+w and spos[1] < gy+h:
-                        es.add_cell(cell)a
-                # Store ensemble in dictionary indexed by grid location and time
-                self.grid_states[(gx,gy,t)] = es
+        # Entropy of image regions, if too low cannot compute velocity
+        hgram, edges = np.histogram( self.image_roi1.ravel(), \
+            bins=nbins, \
+            range=(0,range_mx))
+        hx = infotheory.entropy(hgram)
+        if hx>hmin:
+            im1_roi = im1[pos[0]:pos[0]+w, pos[1]:pos[1]+h]
+            for vx in range(-vx_max,vx_max+1):
+                for vy in range(-vx_max,vy_max+1):
+                    im2_roi = im2[pos[0]+vx:pos[0]+w+vx, pos[1]+vy:pos[1]+h+vy]
+                    hgram_offset, xedges, yedges = np.histogram2d( im1_roi.ravel(), \
+                                                        im2_roi.ravel(), \
+                                                        bins=nbins, \
+                                                        range=[(0,range_mx),(0,range_mx)])
+                    hy_cond_x_val  = infotheory.conditional_entropy(hgram_offset, ax=1)
+                    hy_cond_x[vx+vx_max,vy+vy_max] = hy_cond_x_val
+        # Return the map of conditional entropy at each offset
+        return hy_cond_x
 
-    def compute_mean_velocities(self, cells):
-        for ((gx,gy,t),state) in self.grid_states.iteritems():
-            vel = state.compute_mean_velocity(cells)
-            gx2, gy2 = gx+vel[0], gy+vel[1]
-            es = ModelEnsembleState(gx2,gy2,self.w,self.h,self.scale)
+    def compute_mean_velocity(self):
 
+    def 
 
-
+class Ensemble:
+    # Set of ensemble states at each time t
+    def __init__(self, init_state):
+        self.states = {0: init_state}

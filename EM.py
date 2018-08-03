@@ -235,15 +235,15 @@ def main(fname,startframe,nframes,step,gridfact, forwards = True, GridMethod = N
         im1 = [plt.imread(fname%(startframe+(nframes-i)*step)).astype(np.float32) for i in range(nframes)] #backwards
         im2 = [plt.imread(fname%(startframe+(nframes-1-i)*step)).astype(np.float32) for i in range(nframes)] #backwards
         
-    w,h,c = im1[0].shape[0], im1[0].shape[1], 1
-    
+    w,h = im1[0].shape[0], im1[0].shape[1]
+
 
     # Grid dimensions and spacing for regions of interest
     gx,gy = int(np.floor(w/gridfact)),int(np.floor(h/gridfact))
     dgx,dgy = gridfact, gridfact
-    gside = gridfact*4
+    gside = gridfact*2
 
-    print "Image dimensions: ",w,h,c
+    print "Image dimensions: ",w,h
     print "Grid dimensions: ",gx,gy
 
     print "Image intensity range:"
@@ -264,7 +264,7 @@ def main(fname,startframe,nframes,step,gridfact, forwards = True, GridMethod = N
 
 
     # Compute velocity and position of ROIs based on maximum mutual information translation
-    vmax = 25 
+    vmax = 7
     pos = np.zeros((gx,gy,nframes,2))
     mxll = np.zeros((gx,gy,nframes))
     llikelihood = np.zeros((gx,gy,nframes,vmax*2+1,vmax*2+1))
