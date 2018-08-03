@@ -359,5 +359,5 @@ if __name__ == "__main__":
             ,360 \
             ,5 \
             ,2 \
-            ,64 \
-            ,forwards=True, GridMethod = 1)
+            ,16 \
+            ,forwards=True)
