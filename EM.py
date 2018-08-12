@@ -53,10 +53,11 @@ def analyse_region(im1,im2, w,h, vx_max, vy_max, px1,py1, px2,py2, nbins, range_
             range=(0,range_mx))
     Hx = infotheory.entropy(hgram)
     if Hx<=1:
-        print 'Entropy of region (%d,%d) too low (%f), skipping'%(px1,py1,Hx)
+        #print 'Entropy of region (%d,%d) too low (%f), skipping'%(px1,py1,Hx)
         return None
     else:
-        print 'Entropy of region (%d,%d) (%f)'%(px1,py1,Hx)
+        pass
+        #print 'Entropy of region (%d,%d) (%f)'%(px1,py1,Hx)
 
     for vx in range(-vx_max,vx_max+1):
         for vy in range(-vx_max,vy_max+1):
@@ -75,6 +76,8 @@ def analyse_region(im1,im2, w,h, vx_max, vy_max, px1,py1, px2,py2, nbins, range_
             print im2_roi_offset
             print im2_roi
             '''
+
+            '''
             hgram, edges = np.histogram( im2_roi.ravel(), \
                                                 bins=nbins, \
                                                 range=(0,range_mx))
@@ -88,27 +91,28 @@ def analyse_region(im1,im2, w,h, vx_max, vy_max, px1,py1, px2,py2, nbins, range_
                                                     im1_roi_offset.ravel(), \
                                                     bins=nbins, \
                                                     range=[(0,range_mx),(0,range_mx)])
-            hgram_offset, xedges, yedges = np.histogram2d( im1_roi.ravel(), \
-                                                    im2_roi_offset.ravel(), \
-                                                    bins=nbins, \
-                                                    range=[(0,range_mx),(0,range_mx)])
-            hy_val_offset = infotheory.entropy(hgram_offset, ax=0)
             hgram, xedges, yedges = np.histogram2d( im1_roi.ravel(), \
                                                     im2_roi.ravel(), \
                                                     bins=nbins, \
                                                     range=[(0,range_mx),(0,range_mx)])
             
             hy_cond_x_val  = infotheory.conditional_entropy(hgram, ax=1)
-            hy_cond_x_val_offset  = infotheory.conditional_entropy(hgram_offset, ax=1)
             hy_cond_x_val_offset_self  = infotheory.conditional_entropy(hgram_offset_self, ax=1)
             mi_val = infotheory.mutual_information(hgram)
             mi_val_offset = infotheory.mutual_information(hgram_offset)
 
             hy[vx+vx_max,vy+vy_max] = hy_val
-            hy_cond_x[vx+vx_max,vy+vy_max] = hy_cond_x_val_offset
             mi[vx+vx_max,vy+vy_max] = mi_val_offset
-
             hz[vx+vx_max,vy+vy_max] = hy_cond_x_val_offset_self
+            '''
+            hgram_offset, xedges, yedges = np.histogram2d( im1_roi.ravel(), \
+                                                    im2_roi_offset.ravel(), \
+                                                    bins=nbins, \
+                                                    range=[(0,range_mx),(0,range_mx)])
+            #hy_val_offset = infotheory.entropy(hgram_offset, ax=0)
+            hy_cond_x_val_offset  = infotheory.conditional_entropy(hgram_offset, ax=1)
+            hy_cond_x[vx+vx_max,vy+vy_max] = hy_cond_x_val_offset
+            
             #hy_cond_x_val_offset_self - hy_cond_x_val_offset 
             #mi_val - infotheory.joint_entropy(hgram) + infotheory.joint_entropy(hgram_offset)
     # Return array grid of entropy measures, and 
@@ -150,10 +154,6 @@ def find_peak(arr):
     w,h = arr.shape
     ww = (w-1)/2
     hh = (h-1)/2
-    
-    from scipy.ndimage.filters import maximum_filter
-    maxima = maximum_filter(arr,15)
-    maxpos = np.where(arr==maxima)
 
     mx = np.max(arr,axis=(0,1))
     mn = np.min(arr,axis=(0,1))
@@ -163,9 +163,6 @@ def find_peak(arr):
     x = np.sum(pkx*weight)/np.sum(weight)
     y = np.sum(pky*weight)/np.sum(weight)
     
-    #maxpos = np.where(arr==mx)
-    #ix,iy = np.mean(maxpos[0]), np.mean(maxpos[1])
-    #x,y = ix-ww,iy-ww
     return x,y,mx
 
 # Compute conditional entropy at different uniform velocities
@@ -286,8 +283,12 @@ def main(fname,startframe,nframes,step,gridfact, forwards = True, GridMethod = N
         for i in range(nframes-1):
             print '------------ Step %d ---------'%i
             print ' Image pair:'
-            print '  ', fname%(startframe+(nframes-i)*step)
-            print '  ', fname%(startframe+(nframes-1-i)*step)
+            if forwards:
+                print '  ', fname%(startframe+i*step)
+                print '  ', fname%(startframe+(i+1)*step)
+            else:
+                print '  ', fname%(startframe+(nframes-i)*step)
+                print '  ', fname%(startframe+(nframes-1-i)*step)
             for ix in range(gx):
                 for iy in range(gy):
                     ofname = 'gridtesting/im2-pos%d_%d_step%04d.tif'%(pos[ix,iy,0,0],pos[ix,iy,0,1],i)
@@ -309,7 +310,7 @@ def main(fname,startframe,nframes,step,gridfact, forwards = True, GridMethod = N
                         px2,py2,ll,maxll,hzgrid,im1_roi,im2_roi,im2_roi_shifted = tracking
                         pos[ix,iy,i+1,:] = [px2,py2]
                         mxll[ix,iy,i+1] = maxll
-                        print "vel ", px2-px, py2-py
+                        #print "vel ", px2-px, py2-py
                         llikelihood[ix,iy,i+1,:,:] = ll
                         llself[ix,iy,i+1,:,:] = hzgrid
                         #plt.figure()
@@ -353,11 +354,11 @@ if __name__ == "__main__":
     #         240, 2, 1, 16, forwards=True)
     #main('/Users/timrudge/CavendishMicroscopy/10.01.16/Pos0000/Frame0/Frame0000_regStep%04d.tif', \
     #         150, 2, 1, 64, forwards=True)
-    #main('/Users/timrudge/AndreaRavasioData/masked image/%02d.tif', \
-    #         20, 2, 1, 16, forwards=True)
-    main('/home/timrudge/cellmodeller/data/info_tracking-18-06-08-12-59/step-%05d.png' \
-            ,360 \
-            ,5 \
-            ,2 \
-            ,16 \
-            ,forwards=True)
+    main('/home/timrudge/AndreaRavasioData/masked image/%02d.tif', \
+             1, 39, 1, 16, forwards=True)
+    #main('/home/timrudge/cellmodeller/data/info_tracking-18-06-08-12-59/step-%05d.png' \
+    #        ,360 \
+    #        ,6 \
+    #        ,2 \
+    #        ,16 \
+    #        ,forwards=True)
