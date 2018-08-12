@@ -1,19 +1,9 @@
-
-# coding: utf-8
-
-# In[ ]:
-
-
 import Ensemble
 import numpy as np
 import skimage
 from skimage.io import imread,imsave
 import matplotlib
 import matplotlib.pyplot as plt
-get_ipython().magic(u'matplotlib inline')
-
-
-# In[ ]:
 
 
 startframe = 150
@@ -44,53 +34,26 @@ eg = Ensemble.EnsembleGrid(im)
 print(ima.shape)
 
 
-# In[ ]:
-
-
 eg.initialise_ensembles(64,64, 32,32, 8,8)
 print(eg.gx,eg.gy)
 
-
-# In[ ]:
-
-
 eg.compute_motion(nt,7,7,dt=1)
-
-
-# In[ ]:
-
 
 eg.save_quivers('quivers', 'test_%04d.png', normed=True)
 eg.save_paths('paths', 'test_%04d.png')
-
-
-# In[ ]:
-
 
 max_ll = eg.max_ll()
 max_ll.shape
 plt.imshow(-max_ll[:,:,0])
 plt.colorbar()
 
-
-# In[ ]:
-
-
 fluo = eg.fluo()
 print(fluo.shape)
 plt.plot(fluo[10,16,:,0], fluo[10,16,:,1], '.')
-
-
-# In[ ]:
-
 
 eg.save_data('nparrays')
 pos = np.fromfile('nparrays/pos.np')
 pos.shape
 
-
-# In[ ]:
-
-
-eg.save_rois('rois', 'test_%04d_%04d_%04d.tif')
+#eg.save_rois('rois', 'test_%04d_%04d_%04d.tif')
 
