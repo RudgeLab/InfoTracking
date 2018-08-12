@@ -52,8 +52,8 @@ def analyse_region(im1,im2, w,h, vx_max, vy_max, px1,py1, px2,py2, nbins, range_
             bins=nbins, \
             range=(0,range_mx))
     Hx = infotheory.entropy(hgram)
-    if Hx<=1:
-        #print 'Entropy of region (%d,%d) too low (%f), skipping'%(px1,py1,Hx)
+    if Hx<=0.5:
+        print 'Entropy of region (%d,%d) too low (%f), skipping'%(px1,py1,Hx)
         return None
     else:
         pass
@@ -77,39 +77,11 @@ def analyse_region(im1,im2, w,h, vx_max, vy_max, px1,py1, px2,py2, nbins, range_
             print im2_roi
             '''
 
-            '''
-            hgram, edges = np.histogram( im2_roi.ravel(), \
-                                                bins=nbins, \
-                                                range=(0,range_mx))
-            hy_val = infotheory.entropy(hgram)
-    
-            hgram_diff, edges = np.histogram( (im2_roi_offset-im1_roi).ravel(), \
-                                                    bins=nbins, \
-                                                    range=(0,range_mx))
-
-            hgram_offset_self, xedges, yedges = np.histogram2d( im1_roi.ravel(), \
-                                                    im1_roi_offset.ravel(), \
-                                                    bins=nbins, \
-                                                    range=[(0,range_mx),(0,range_mx)])
-            hgram, xedges, yedges = np.histogram2d( im1_roi.ravel(), \
-                                                    im2_roi.ravel(), \
-                                                    bins=nbins, \
-                                                    range=[(0,range_mx),(0,range_mx)])
-            
-            hy_cond_x_val  = infotheory.conditional_entropy(hgram, ax=1)
-            hy_cond_x_val_offset_self  = infotheory.conditional_entropy(hgram_offset_self, ax=1)
-            mi_val = infotheory.mutual_information(hgram)
-            mi_val_offset = infotheory.mutual_information(hgram_offset)
-
-            hy[vx+vx_max,vy+vy_max] = hy_val
-            mi[vx+vx_max,vy+vy_max] = mi_val_offset
-            hz[vx+vx_max,vy+vy_max] = hy_cond_x_val_offset_self
-            '''
             hgram_offset, xedges, yedges = np.histogram2d( im1_roi.ravel(), \
                                                     im2_roi_offset.ravel(), \
-                                                    bins=nbins, \
-                                                    range=[(0,range_mx),(0,range_mx)])
-            #hy_val_offset = infotheory.entropy(hgram_offset, ax=0)
+                                                    bins=nbins)
+                                                    #, \
+                                                    #range=[(0,range_mx),(0,range_mx)])
             hy_cond_x_val_offset  = infotheory.conditional_entropy(hgram_offset, ax=1)
             hy_cond_x[vx+vx_max,vy+vy_max] = hy_cond_x_val_offset
             
@@ -167,6 +139,7 @@ def find_peak(arr):
 
 # Compute conditional entropy at different uniform velocities
 def track_cond_entropy(im1,im2, vx_max,vy_max, px1,py1, gs, nbins=256, range_mx=2**8, ofname=None):
+
     # Compute mutual information between image regions over offset grid
     region_analysis = analyse_region(im1,im2, \
                                                             gs,gs, \
@@ -183,7 +156,7 @@ def track_cond_entropy(im1,im2, vx_max,vy_max, px1,py1, gs, nbins=256, range_mx=
     im1_roi = im1[px1:px1+gs,py1:py1+gs]
     im2_roi = im2[px1:px1+gs,py1:py1+gs]
 
-    if np.max(hy_grid, axis=(0,1))<=1:
+    if np.max(hy_grid, axis=(0,1))<=0.5:
         # Entropy too low, probably background
         px2,py2 = px1,py1
         return px2,py2,0,0,0,im1_roi,im2_roi,im2_roi
@@ -259,7 +232,6 @@ def main(fname,startframe,nframes,step,gridfact, forwards = True, GridMethod = N
     im1 = [gaussian_filter(im1[i],1) for i in range(nframes)]
     im2 = [gaussian_filter(im2[i],1) for i in range(nframes)]
 
-
     # Compute velocity and position of ROIs based on maximum mutual information translation
     vmax = 7
     pos = np.zeros((gx,gy,nframes,2))
@@ -294,14 +266,13 @@ def main(fname,startframe,nframes,step,gridfact, forwards = True, GridMethod = N
                     ofname = 'gridtesting/im2-pos%d_%d_step%04d.tif'%(pos[ix,iy,0,0],pos[ix,iy,0,1],i)
                     px = int(pos[ix,iy,i,0])
                     py = int(pos[ix,iy,i,1])
-                    #print px,py
-                    if px<vmax or px>=w-gside-vmax or py<vmax or py>=h-gside-vmax: 
+                    if px<vmax or px>=w-gside-vmax or py<vmax or py>=h-gside-vmax:
                         #print "Grid square outside image, skipping"
                         tracking = None
                     else:
                         tracking = track_cond_entropy(im1[i], im2[i], \
                                                 vmax, vmax, \
-                                                px,py, \
+                                                px,py,\
                                                 gside, \
                                                 nbins=16, range_mx=max(mx1,mx2), \
                                                 ofname=ofname)
@@ -352,6 +323,8 @@ if __name__ == "__main__":
     #def main(fname,startframe,nframes,step,gridfact, forwards = True, GridMethod = None):
     #main('/Users/timrudge/cellmodeller/data/testing-18-06-25-01-09/step-%05d.png', \
     #         240, 2, 1, 16, forwards=True)
+    main('/Users/timrudge/CavendishMicroscopy/10.01.16/Pos0000/Frame0/aligned_Frame0000Step%04d.tif', \
+             100, 10, 1, 64, forwards=False)
     #main('/Users/timrudge/CavendishMicroscopy/10.01.16/Pos0000/Frame0/Frame0000_regStep%04d.tif', \
     #         150, 2, 1, 64, forwards=True)
     main('/home/timrudge/AndreaRavasioData/masked image/%02d.tif', \
