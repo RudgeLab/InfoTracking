@@ -152,7 +152,7 @@ class Ensemble():
 
     def fluo(self):
         # Return array of ensemble positions at each time
-        return np.array([s.fluo for t,s in self.states.items()])
+        return np.array([s.fluorescence() for t,s in self.states.items()])
 
 class EnsembleGrid:
     def __init__(self, images):
@@ -257,7 +257,7 @@ class EnsembleGrid:
                 norm = np.sqrt(vel[:,:,t,0]**2 + vel[:,:,t,1]**2)
             else:
                 norm = 1
-            plt.quiver(self.gw/2+pos[:,:,t,1],self.gh/2+pos[:,:,t,0], vel[:,:,t,0]/norm, vel[:,:,t,1]/norm)
+            plt.quiver(self.gw/2+pos[:,:,t,1],self.gh/2+pos[:,:,t,0], vel[:,:,t,1]/norm, vel[:,:,t,0]/norm)
             fname = os.path.join(outdir, file_pattern%(t))
             plt.savefig(fname)
             plt.clf()
