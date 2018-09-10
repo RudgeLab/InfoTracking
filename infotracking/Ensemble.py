@@ -1,24 +1,36 @@
 import numpy as np
 import skimage
 from skimage.io import imsave
-import infotheory
+import infotracking.infotheory as infotheory
 import matplotlib
 import matplotlib.pyplot as plt
 import os
 
 class EnsembleState():
-    def __init__(self, pos1, t1, t2, image1, image2, w=64, h=64):
+    def __init__(self, pos1, t1, t2, image1, image2, mask, w=64, h=64):
         # Ensemble computed from image pair, stores regions of interest at t and t+1
         self.t1 = t1
         self.t2 = t2
         self.w = w
         self.h = h
         self.pos1 = pos1
+        self.pos2 = pos1
+        self.vel = [0,0]
         self.image1 = image1
         self.image2 = image2
+        self.mask = mask
         self.im1_roi = None
         self.im2_roi = None
         self.max_ll = 0
+        # Size of images
+        s = image1.shape
+        self.imw = s[0] 
+        self.imh = s[1]
+        if len(s)==3:
+            self.imd = s[2]
+        else:
+            self.imd = 1
+
 
     def entropy_map(self, vx_max=7, vy_max=7, nbins=16, hmin=0.0):
         # Compute conditional entropy H(I2|I1) at each displacement
@@ -26,20 +38,23 @@ class EnsembleState():
         vh = vy_max*2 + 1
         hy_cond_x = np.zeros((vw,vh))
 
-        # Size of images
-        imw = self.image1.shape[0]
-        imh = self.image1.shape[1]
-        imd = self.image1.shape[2]
-
         # ROI in first image
         ipx1 = int(self.pos1[0])
         ipy1 = int(self.pos1[1])
         # If ROI of first image falls outside image boundary return empty map
         # and set empty ROIs
-        if ipx1<0 or ipy1<0 or ipx1+self.w>=imw or ipy1+self.h>=imh:
-            self.im1_roi = np.zeros((self.w,self.h,imd))
-            self.im2_roi = np.zeros((self.w,self.h,imd))
-            return hy_cond_x
+        self.im1_roi = np.zeros((self.w,self.h,self.imd))
+        self.im2_roi = np.zeros((self.w,self.h,self.imd))
+        if ipx1<0 or ipy1<0 or ipx1+self.w>=self.imw or ipy1+self.h>=self.imh:
+            return False, hy_cond_x
+        # Check mask
+        self.mask_roi = self.mask[ipx1:ipx1+self.w, \
+                                    ipy1:ipy1+self.h]
+        if np.mean(self.mask_roi)<0.75:
+            # Outside colony
+            return False, hy_cond_x
+
+        # Analyse image region
         self.im1_roi = self.image1[ipx1:ipx1+self.w, \
                                     ipy1:ipy1+self.h]
 
@@ -47,24 +62,27 @@ class EnsembleState():
         hgram, edges = np.histogram( self.im1_roi.ravel(), \
             bins=nbins)
         hx = infotheory.entropy(hgram)
-        if hx>hmin:
-            for vx in range(-vx_max,vx_max+1):
-                for vy in range(-vx_max,vy_max+1):
-                    ipx2 = int(self.pos1[0]+vx)
-                    ipy2 = int(self.pos1[1]+vy)
-                    # Check roi is inside image, otherwise entropy is zero
-                    if ipx2>=0 and ipy2>=0 and ipx2+self.w<imw and ipy2+self.h<imh:
-                        im2_roi = self.image2[ipx2:ipx2+self.w, \
-                                                    ipy2:ipy2+self.h]
-                        hgram_offset, xedges, yedges = np.histogram2d( self.im1_roi.ravel(), \
-                                                            im2_roi.ravel(), \
-                                                            bins=nbins)
-                        hy_cond_x_val  = infotheory.conditional_entropy(hgram_offset, ax=1)
-                        hy_cond_x[vx+vx_max,vy+vy_max] = hy_cond_x_val
-        # Return the map of conditional entropy at each offset
-        return hy_cond_x
+        if hx<hmin:
+            # Image region has low entropy
+            return False, hy_cond_x
 
-    def compute_mean_velocity(self, llmap, threshold=0.9):
+        for vx in range(-vx_max,vx_max+1):
+            for vy in range(-vx_max,vy_max+1):
+                ipx2 = int(self.pos1[0]+vx)
+                ipy2 = int(self.pos1[1]+vy)
+                # Check roi is inside image, otherwise entropy is zero
+                if ipx2>=0 and ipy2>=0 and ipx2+self.w<self.imw and ipy2+self.h<self.imh:
+                    im2_roi = self.image2[ipx2:ipx2+self.w, \
+                                                ipy2:ipy2+self.h]
+                    hgram_offset, xedges, yedges = np.histogram2d( self.im1_roi.ravel(), \
+                                                        im2_roi.ravel(), \
+                                                        bins=nbins)
+                    hy_cond_x_val  = infotheory.conditional_entropy(hgram_offset, ax=1)
+                    hy_cond_x[vx+vx_max,vy+vy_max] = hy_cond_x_val
+        # Return the map of conditional entropy at each offset
+        return True,hy_cond_x
+
+    def compute_mean_velocity(self, llmap, threshold=0.75):
         '''
         Compute the mean velocity of the ensemble as the offset with maximum
         log likelihood, using the grid llmap 
@@ -74,10 +92,6 @@ class EnsembleState():
 
         Returns velocity in x,y and maximum value of log likelihood
         '''
-        # Size of images
-        imw = self.image1.shape[0]
-        imh = self.image1.shape[1]
-        imd = self.image1.shape[2]
         # Size of map
         w,h = llmap.shape
         ww = (w-1)/2
@@ -103,11 +117,11 @@ class EnsembleState():
 
         ipx2 = int(self.pos2[0])
         ipy2 = int(self.pos2[1])
-        if ipx2>=0 and ipy2>=0 and ipx2+self.w<imw and ipy2+self.h<imh:
+        if ipx2>=0 and ipy2>=0 and ipx2+self.w<self.imw and ipy2+self.h<self.imh:
             self.im2_roi = self.image2[ipx2:ipx2+self.w, \
                                     ipy2:ipy2+self.h]
         else:
-            self.im2_roi = np.zeros((self.w,self.h,imd))
+            self.im2_roi = np.zeros((self.w,self.h,self.imd))
         self.max_ll = mx
         self.fluo = self.fluorescence()
         return self.vel
@@ -155,14 +169,19 @@ class Ensemble():
         return np.array([s.fluorescence() for t,s in self.states.items()])
 
 class EnsembleGrid:
-    def __init__(self, images):
+    def __init__(self, images, masks):
         # Dictionary of ensembles mapped by grid position
         self.ensembles = {} 
         # Array of images for computing ensembles
         self.images = images
-        self.imw = images[0].shape[0]
-        self.imh = images[0].shape[1]
-        self.imd = images[0].shape[2]
+        self.masks = masks
+        s = images[0].shape
+        self.imw = s[0] 
+        self.imh = s[1]
+        if len(s)==3:
+            self.imd = s[2]
+        else:
+            self.imd = 1
         self.nt = 0
         self.gx, self.gy = 0,0
 
@@ -185,21 +204,36 @@ class EnsembleGrid:
             for iy in range(self.gy):
                 pos = np.array([px0+ix*sw, py0+iy*sh])
                 self.ensembles[(ix,iy)] = Ensemble()
-                state = EnsembleState(pos, 0, dt, self.images[0,:,:], self.images[1,:,:], w,h)
+                state = EnsembleState(pos, 0, dt, \
+                                        self.images[0,:,:], \
+                                        self.images[1,:,:], \
+                                        self.masks[0,:,:], \
+                                        w,h)
                 self.ensembles[(ix,iy)][0] = state
 
     def compute_motion(self, nt, vx_max, vy_max, dt=1):
         self.nt = nt
         for (ix,iy),ensemble in self.ensembles.items():
             state0 = ensemble.states[0]
-            ll = -state0.entropy_map(vx_max=7, vy_max=7, nbins=16, hmin=1.0)
-            vel,mx = state0.compute_mean_velocity(ll)
+            mask,ll = state0.entropy_map(vx_max, vy_max, nbins=16, hmin=1.0)
+            if mask:
+                vel,mx = state0.compute_mean_velocity(ll)
+            else:
+                vel = [0,0]
+                mx = 0
             for t in range(1,nt):
                 prevstate = ensemble.states[t-1]
                 state = EnsembleState(prevstate.pos2, t, t+dt, \
-                                        self.images[t,:,:], self.images[t+1,:,:], self.gw,self.gh)
-                ll = -state.entropy_map(vx_max=7, vy_max=7, nbins=16, hmin=1.0)
-                vel,mx = state.compute_mean_velocity(ll)
+                                        self.images[t,:,:], \
+                                        self.images[t+1,:,:], \
+                                        self.masks[t,:,:], \
+                                        self.gw,self.gh)
+                mask,ll = state.entropy_map(vx_max=7, vy_max=7, nbins=16, hmin=1.0)
+                if mask:
+                    vel,mx = state.compute_mean_velocity(-ll)
+                else:
+                    vel = [0,0]
+                    mx = 0
                 ensemble[t] = state
 
     def pos(self):
@@ -207,12 +241,23 @@ class EnsembleGrid:
         for (ix,iy),e in self.ensembles.items():
             pos[ix,iy,:,:] = e.pos()
         return pos
-            
+        
     def vel(self):
         vel = np.zeros((self.gx,self.gy,self.nt,2))
         for (ix,iy),e in self.ensembles.items():
             vel[ix,iy,:,:] = e.vel()
         return vel
+
+    def velmag(self):
+        vel = self.vel()
+        velmag = np.sqrt(vel[:,:,:,0]**2 + vel[:,:,:,1]**2)
+        return velmag
+
+    def angle(self):
+        vel = self.vel()
+        ang = np.arctan2(vel[:,:,:,0], vel[:,:,:,1])
+        ang[ang<0] += 2*np.pi
+        return ang
 
     def max_ll(self):
         max_ll = np.zeros((self.gx,self.gy,self.nt))
@@ -223,7 +268,7 @@ class EnsembleGrid:
     def fluo(self):
         fluo = np.zeros((self.gx,self.gy,self.nt,self.imd))
         for (ix,iy),e in self.ensembles.items():
-            fluo[ix,iy,:,:] = e.fluo()
+            fluo[ix,iy,:,:] = e.fluo().reshape((self.nt,self.imd))
         return fluo
 
     def save_data(self, outdir):
@@ -269,8 +314,8 @@ class EnsembleGrid:
             im = self.images[t]
             plt.imshow(im/np.max(im), origin='lower' )
             for tt in range(t):
-                plt.plot(32+pos[:,:,tt,1], 32+pos[:,:,tt,0],'r.')
-            plt.plot(32+pos[:,:,0,1], 32+pos[:,:,0,0],'w.')
+                plt.plot(self.gw/2+pos[:,:,tt,1], self.gh/2+pos[:,:,tt,0],'w.')
+            plt.plot(self.gw/2+pos[:,:,-1,1], self.gh/2+pos[:,:,-1,0],'r.')
             fname = os.path.join(outdir, file_pattern%(t))
             plt.savefig(fname)
             plt.clf()
