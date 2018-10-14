@@ -259,6 +259,11 @@ class EnsembleGrid:
         ang[ang<0] += 2*np.pi
         return ang
 
+    def cosine(self):
+        vel = self.vel()
+        cos = vel[:,:,:,0]/np.sqrt(vel[:,:,:,1]**2 + vel[:,:,:,0]**2)
+        return cos
+
     def max_ll(self):
         max_ll = np.zeros((self.gx,self.gy,self.nt))
         for (ix,iy),e in self.ensembles.items():
@@ -291,7 +296,7 @@ class EnsembleGrid:
                 # Assume the image is 16 bit tiff
                 imsave(fname, s.im1_roi.astype(np.uint16), plugin='tifffile')
 
-    def save_quivers(self, outdir, file_pattern, normed=False):
+    def save_quivers(self, outdir, file_pattern1, file_pattern2, normed=False):
         plt.figure(figsize=(12,12))
         pos = self.pos()
         vel = self.vel()
@@ -303,11 +308,15 @@ class EnsembleGrid:
             else:
                 norm = 1
             plt.quiver(self.gw/2+pos[:,:,t,1],self.gh/2+pos[:,:,t,0], vel[:,:,t,1]/norm, vel[:,:,t,0]/norm)
-            fname = os.path.join(outdir, file_pattern%(t))
+            fname = os.path.join(outdir, file_pattern1%(t))
+            plt.savefig(fname)
+            plt.clf()
+            plt.quiver(self.gw/2+pos[:,:,t,1],self.gh/2+pos[:,:,t,0], vel[:,:,t,1]/norm, vel[:,:,t,0]/norm)
+            fname = os.path.join(outdir, file_pattern2%(t))
             plt.savefig(fname)
             plt.clf()
 
-    def save_paths(self, outdir, file_pattern):
+    def save_paths(self, outdir, file_pattern1, file_pattern2):
         plt.figure(figsize=(12,12))
         pos = self.pos()
         for t in range(self.nt):
@@ -315,8 +324,14 @@ class EnsembleGrid:
             plt.imshow(im/np.max(im), origin='lower' )
             for tt in range(t):
                 plt.plot(self.gw/2+pos[:,:,tt,1], self.gh/2+pos[:,:,tt,0],'w.')
-            plt.plot(self.gw/2+pos[:,:,-1,1], self.gh/2+pos[:,:,-1,0],'r.')
-            fname = os.path.join(outdir, file_pattern%(t))
+            plt.plot(self.gw/2+pos[:,:,t,1], self.gh/2+pos[:,:,t,0],'r.')
+            fname = os.path.join(outdir, file_pattern1%(t))
+            plt.savefig(fname)
+            plt.clf()
+            for tt in range(t):
+                plt.plot(self.gw/2+pos[:,:,tt,1], self.gh/2+pos[:,:,tt,0],'k.')
+            plt.plot(self.gw/2+pos[:,:,t,1], self.gh/2+pos[:,:,t,0],'r.')
+            fname = os.path.join(outdir, file_pattern2%(t))
             plt.savefig(fname)
             plt.clf()
 
