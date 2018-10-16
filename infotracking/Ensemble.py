@@ -6,6 +6,9 @@ import matplotlib
 import matplotlib.pyplot as plt
 import os
 
+nbins = 16
+hmin = 1.0
+
 class EnsembleState():
     def __init__(self, pos1, t1, t2, image1, image2, mask, w=64, h=64):
         # Ensemble computed from image pair, stores regions of interest at t and t+1
@@ -32,7 +35,7 @@ class EnsembleState():
             self.imd = 1
 
 
-    def entropy_map(self, vx_max=7, vy_max=7, nbins=16, hmin=0.0):
+    def entropy_map(self, vx_max=7, vy_max=7, nbins=nbins, hmin=0.0):
         # Compute conditional entropy H(I2|I1) at each displacement
         vw = vx_max*2 + 1
         vh = vy_max*2 + 1
@@ -178,7 +181,7 @@ class Ensemble():
 class EnsembleGrid:
     def __init__(self, images, masks):
         # Dictionary of ensembles mapped by grid position
-        self.ensembles = {} 
+        self.ensembles = []
         # Array of images for computing ensembles
         self.images = images
         self.masks = masks
@@ -190,7 +193,7 @@ class EnsembleGrid:
         else:
             self.imd = 1
         self.nt = 0
-        self.gx, self.gy = 0,0
+        self.n = 0
 
     def __getitem__(self, ix,iy):
         return self.ensembles[(ix,iy)]
@@ -201,29 +204,35 @@ class EnsembleGrid:
     def __setitem__(self, ix,iy,ensemble):
         self.ensembles[(ix,iy)] = ensemble
 
-    def initialise_ensembles(self, w,h, sw,sh, px0,py0, dt=1):
+    def initialise_ensembles(self, w,h, sw,sh, px0,py0, vx_max, vy_max, dt=1):
         # Initialise each ensemble with states at each time
         self.gx = int(self.imw/sw)
         self.gy = int(self.imh/sh)
         self.nt = 1
         self.gw,self.gh = w,h
+        self.n = 0
         for ix in range(self.gx):
             for iy in range(self.gy):
                 pos = np.array([px0+ix*sw, py0+iy*sh])
-                self.ensembles[(ix,iy)] = Ensemble()
                 state = EnsembleState(pos, 0, dt, \
                                         self.images[0,:,:], \
                                         self.images[1,:,:], \
                                         self.masks[0,:,:], \
                                         w,h)
-                self.ensembles[(ix,iy)][0] = state
+
+                # Only add ensemble if it meets the requirements for tracking, ie. valid entropy map
+                mask,ll = state.entropy_map(vx_max, vy_max, nbins=nbins, hmin=hmin)
+                if mask:
+                    e = Ensemble()
+                    e[0] = state
+                    self.ensembles.append(e)
+                    self.n += 1
 
     def compute_motion(self, nt, vx_max, vy_max, dt=1):
-
         self.nt = nt
-        for (ix,iy),ensemble in self.ensembles.items():
+        for ensemble in self.ensembles:
             state0 = ensemble.states[0]
-            mask,ll = state0.entropy_map(vx_max, vy_max, nbins=16, hmin=1.0)
+            mask,ll = state0.entropy_map(vx_max, vy_max, nbins=nbins, hmin=hmin)
             if mask:
                 vel,mx = state0.compute_mean_velocity(-ll)
             else:
@@ -237,7 +246,7 @@ class EnsembleGrid:
                                         self.images[t+1,:,:], \
                                         self.masks[t,:,:], \
                                         self.gw,self.gh)
-                mask,ll = state.entropy_map(vx_max=7, vy_max=7, nbins=16, hmin=1.0)
+                mask,ll = state.entropy_map(vx_max=7, vy_max=7, nbins=nbins, hmin=hmin)
                 if mask:
                     vel,mx = state.compute_mean_velocity(-ll)
                 else:
@@ -246,43 +255,43 @@ class EnsembleGrid:
                 ensemble[t] = state
 
     def pos(self):
-        pos = np.zeros((self.gx,self.gy,self.nt,2))
-        for (ix,iy),e in self.ensembles.items():
-            pos[ix,iy,:,:] = e.pos()
+        pos = np.zeros((self.n,self.nt,2))
+        for i in range(len(self.ensembles)):
+            pos[i,:,:] = self.ensembles[i].pos()
         return pos
         
     def vel(self):
-        vel = np.zeros((self.gx,self.gy,self.nt,2))
-        for (ix,iy),e in self.ensembles.items():
-            vel[ix,iy,:,:] = e.vel()
+        vel = np.zeros((self.n,self.nt,2))
+        for i in range(len(self.ensembles)):
+            vel[i,:,:] = self.ensembles[i].vel()
         return vel
 
     def velmag(self):
         vel = self.vel()
-        velmag = np.sqrt(vel[:,:,:,0]**2 + vel[:,:,:,1]**2)
+        velmag = np.sqrt(vel[:,:,0]**2 + vel[:,:,1]**2)
         return velmag
 
     def angle(self):
         vel = self.vel()
-        ang = np.arctan2(vel[:,:,:,0], vel[:,:,:,1])
+        ang = np.arctan2(vel[:,:,0], vel[:,:,1])
         ang[ang<0] += 2*np.pi
         return ang
 
     def cosine(self):
         vel = self.vel()
-        cos = vel[:,:,:,0]/np.sqrt(vel[:,:,:,1]**2 + vel[:,:,:,0]**2)
+        cos = vel[:,:,0]/np.sqrt(vel[:,:,1]**2 + vel[:,:,0]**2)
         return cos
 
     def max_ll(self):
-        max_ll = np.zeros((self.gx,self.gy,self.nt))
-        for (ix,iy),e in self.ensembles.items():
-            max_ll[ix,iy,:] = e.max_ll()
+        max_ll = np.zeros((self.n,self.nt))
+        for i in range(len(self.ensembles)):
+            max_ll[i,:] = self.ensembles[i].max_ll()
         return max_ll
 
     def fluo(self):
-        fluo = np.zeros((self.gx,self.gy,self.nt,self.imd))
-        for (ix,iy),e in self.ensembles.items():
-            fluo[ix,iy,:,:] = e.fluo().reshape((self.nt,self.imd))
+        fluo = np.zeros((self.n,self.nt,self.imd))
+        for i in range(len(self.ensembles)):
+            fluo[i,:,:] = self.ensembles[i].fluo().reshape((self.nt,self.imd))
         return fluo
 
     def save_data(self, outdir):
@@ -299,7 +308,7 @@ class EnsembleGrid:
         self.fluo().tofile(fname)
 
     def save_rois(self, outdir, file_pattern):
-        for (ix,iy),e in self.ensembles.items():
+        for e in self.ensebles:
             for t,s in e.states.items():
                 fname = os.path.join(outdir, file_pattern%(ix,iy,t))
                 # Assume the image is 16 bit tiff
@@ -313,14 +322,14 @@ class EnsembleGrid:
             im = self.images[t]
             plt.imshow(im/np.max(im), origin='lower' )
             if normed:
-                norm = np.sqrt(vel[:,:,t,0]**2 + vel[:,:,t,1]**2)
+                norm = np.sqrt(vel[:,t,0]**2 + vel[:,t,1]**2)
             else:
                 norm = 1
-            plt.quiver(self.gw/2+pos[:,:,t,1],self.gh/2+pos[:,:,t,0], vel[:,:,t,1]/norm, vel[:,:,t,0]/norm)
+            plt.quiver(self.gw/2+pos[:,t,1],self.gh/2+pos[:,t,0], vel[:,t,1]/norm, vel[:,t,0]/norm)
             fname = os.path.join(outdir, file_pattern1%(t))
             plt.savefig(fname)
             plt.clf()
-            plt.quiver(self.gw/2+pos[:,:,t,1],self.gh/2+pos[:,:,t,0], vel[:,:,t,1]/norm, vel[:,:,t,0]/norm)
+            plt.quiver(self.gw/2+pos[:,t,1],self.gh/2+pos[:,t,0], vel[:,t,1]/norm, vel[:,t,0]/norm)
             fname = os.path.join(outdir, file_pattern2%(t))
             plt.savefig(fname)
             plt.clf()
@@ -332,14 +341,14 @@ class EnsembleGrid:
             im = self.images[t]
             plt.imshow(im/np.max(im), origin='lower' )
             for tt in range(t):
-                plt.plot(self.gw/2+pos[:,:,tt,1], self.gh/2+pos[:,:,tt,0],'w.')
-            plt.plot(self.gw/2+pos[:,:,t,1], self.gh/2+pos[:,:,t,0],'r.')
+                plt.plot(self.gw/2+pos[:,tt,1], self.gh/2+pos[:,tt,0],'w.')
+            plt.plot(self.gw/2+pos[:,t,1], self.gh/2+pos[:,t,0],'r.')
             fname = os.path.join(outdir, file_pattern1%(t))
             plt.savefig(fname)
             plt.clf()
             for tt in range(t):
-                plt.plot(self.gw/2+pos[:,:,tt,1], self.gh/2+pos[:,:,tt,0],'k.')
-            plt.plot(self.gw/2+pos[:,:,t,1], self.gh/2+pos[:,:,t,0],'r.')
+                plt.plot(self.gw/2+pos[:,tt,1], self.gh/2+pos[:,tt,0],'k.')
+            plt.plot(self.gw/2+pos[:,t,1], self.gh/2+pos[:,t,0],'r.')
             fname = os.path.join(outdir, file_pattern2%(t))
             plt.savefig(fname)
             plt.clf()
