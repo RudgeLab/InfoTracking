@@ -50,7 +50,7 @@ class EnsembleState():
         # Check mask
         self.mask_roi = self.mask[ipx1:ipx1+self.w, \
                                     ipy1:ipy1+self.h]
-        if np.mean(self.mask_roi)<0.75:
+        if np.mean(self.mask_roi)<1:
             # Outside colony
             return False, hy_cond_x
 
@@ -58,12 +58,18 @@ class EnsembleState():
         self.im1_roi = self.image1[ipx1:ipx1+self.w, \
                                     ipy1:ipy1+self.h]
 
+        if np.mean(self.im1_roi)<500:
+            # Outside colony
+            print("Intensity too low")
+            return False, hy_cond_x
+
         # Entropy of image region, if too low cannot compute velocity
         hgram, edges = np.histogram( self.im1_roi.ravel(), \
             bins=nbins)
         hx = infotheory.entropy(hgram)
         if hx<hmin:
             # Image region has low entropy
+            print("Entropy too low")
             return False, hy_cond_x
 
         for vx in range(-vx_max,vx_max+1):
@@ -77,7 +83,7 @@ class EnsembleState():
                     hgram_offset, xedges, yedges = np.histogram2d( self.im1_roi.ravel(), \
                                                         im2_roi.ravel(), \
                                                         bins=nbins)
-                    hy_cond_x_val  = infotheory.conditional_entropy(hgram_offset, ax=1)
+                    hy_cond_x_val  = -infotheory.mutual_information(hgram_offset)
                     hy_cond_x[vx+vx_max,vy+vy_max] = hy_cond_x_val
         # Return the map of conditional entropy at each offset
         return True,hy_cond_x
@@ -101,6 +107,7 @@ class EnsembleState():
         mn = np.min(llmap,axis=(0,1))
         if mx-mn<1e-6:
             vx,vy = 0,0
+            print("No minumum found")
         else:
             pk = llmap-mn > threshold*(mx-mn)
             pky,pkx = np.meshgrid(np.arange(-ww,ww+1), np.arange(-hh,hh+1))
@@ -212,13 +219,15 @@ class EnsembleGrid:
                 self.ensembles[(ix,iy)][0] = state
 
     def compute_motion(self, nt, vx_max, vy_max, dt=1):
+
         self.nt = nt
         for (ix,iy),ensemble in self.ensembles.items():
             state0 = ensemble.states[0]
             mask,ll = state0.entropy_map(vx_max, vy_max, nbins=16, hmin=1.0)
             if mask:
-                vel,mx = state0.compute_mean_velocity(ll)
+                vel,mx = state0.compute_mean_velocity(-ll)
             else:
+                print("Skipping")
                 vel = [0,0]
                 mx = 0
             for t in range(1,nt):

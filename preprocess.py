@@ -27,14 +27,14 @@ import sys
 path = sys.argv[1]
 nframes = int(sys.argv[2])
 #'/media/timrudge/tjr34_ntfs/Microscopy/Cavendish/10.01.16/Pos0000'
-infile = os.path.join(path, 'Frame%04dStep%04d.tiff')
+infile = os.path.join(path, 'Frame%04dStep%04d.tif')
 outfile = os.path.join(path, 'aligned_Frame%04dStep%04d.tiff')
 outfile_mask = os.path.join(path, 'aligned_mask_Frame%04dStep%04d.tiff')
 startframe = 0
 step = 1
 scale = 2 
 
-im1 = imread(infile%(0,startframe)).astype(np.float32) 
+im1 = imread(infile%(0,startframe), plugin='tifffile').astype(np.float32) 
 im1 = gaussian_filter(im1,1)
 im1 = downscale_local_mean(im1, (scale,scale))
 
@@ -42,9 +42,9 @@ im1 = downscale_local_mean(im1, (scale,scale))
 bgmean = np.mean(im1.ravel())
 bgstd = np.std(im1.ravel())
 bgval = bgmean + bgstd*2
-print(bgstd)
+print(bgmean)
 
-im2 = imread(infile%(0,startframe+step)).astype(np.float32) 
+im2 = imread(infile%(0,startframe+step), plugin='tifffile').astype(np.float32) 
 im2 = gaussian_filter(im2,1)
 im2 = downscale_local_mean(im2, (scale,scale))
 
@@ -76,12 +76,14 @@ for i in range(nframes-1):
     
     imsave(outfile%(0,i+1), offset_image.astype(np.uint16), plugin='tifffile')
 
-    mask = offset_image>bgstd
+    immask = offset_image
+    immask = gaussian_filter(immask,10)
+    mask = immask > bgval
     imsave(outfile_mask%(0,i+1), mask.astype(np.uint16), plugin='tifffile')
 
     # Reset reference image and get next image in sequence
     im1 = offset_image
-    im2 = imread(infile%(0,startframe+(i+2)*step)).astype(np.float32) 
+    im2 = imread(infile%(0,startframe+(i+2)*step), plugin='tifffile').astype(np.float32) 
     im2 = gaussian_filter(im2,1)
     im2 = downscale_local_mean(im2, (scale,scale))
 
