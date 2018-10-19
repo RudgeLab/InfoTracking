@@ -61,7 +61,7 @@ class EnsembleState():
         self.im1_roi = self.image1[ipx1:ipx1+self.w, \
                                     ipy1:ipy1+self.h]
 
-        if np.mean(self.im1_roi)<500:
+        if np.mean(self.im1_roi)<1000:
             # Outside colony
             print("Intensity too low")
             return False, hy_cond_x
@@ -246,7 +246,7 @@ class EnsembleGrid:
                                         self.images[t+1,:,:], \
                                         self.masks[t,:,:], \
                                         self.gw,self.gh)
-                mask,ll = state.entropy_map(vx_max=7, vy_max=7, nbins=nbins, hmin=hmin)
+                mask,ll = state.entropy_map(vx_max=vx_max, vy_max=vy_max, nbins=nbins, hmin=hmin)
                 if mask:
                     vel,mx = state.compute_mean_velocity(-ll)
                 else:

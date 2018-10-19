@@ -44,7 +44,7 @@ bgstd = np.std(im1.ravel())
 bgval = bgmean + bgstd*2
 print(bgmean)
 
-im2 = imread(infile%(0,startframe+step), plugin='tifffile').astype(np.float32) 
+im2 = imread(infile%(2,startframe+step), plugin='tifffile').astype(np.float32) 
 im2 = gaussian_filter(im2,1)
 im2 = downscale_local_mean(im2, (scale,scale))
 
