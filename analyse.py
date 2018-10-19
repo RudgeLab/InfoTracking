@@ -19,7 +19,7 @@ nframes = int(sys.argv[4])
 nt = nframes-1
 
 windowsize = 32 
-windowspacing = 32
+windowspacing = 16 
 window_px0 = 0
 window_py0 = 0
 
@@ -27,25 +27,29 @@ maxvel = 15
 #------------------------------------------------
 
 # Run analysis
-ima = np.array([imread(filename%(0,startframe+(nframes-i)*step)).astype(np.float32) for i in range(nframes)])
-imb = np.array([imread(filename%(2,startframe+(nframes-i)*step)).astype(np.float32) for i in range(nframes)])
+ima = np.array([imread(filename%(0,startframe+(i)*step)).astype(np.float32) for i in range(nframes)])
+imb = np.array([imread(filename%(2,startframe+(i)*step)).astype(np.float32) for i in range(nframes)])
 im = np.zeros((ima.shape[0],ima.shape[1],ima.shape[2],3), dtype=np.float32)
+print("Image range", np.min(ima), np.max(ima))
 im[:,:,:,0] = ima
 im[:,:,:,1] = imb
-mask = np.array([imread(maskfilename%(0,startframe+(nframes-i)*step)).astype(np.float32) for i in range(nframes)])
+mask = np.ones(ima.shape).astype(np.float32) #np.array([imread(maskfilename%(0,startframe+(nframes-i)*step)).astype(np.float32) for i in range(nframes)])
 
 print("Image dimensions ",im[0].shape)
 eg = Ensemble.EnsembleGrid(im, mask)
 
 eg.initialise_ensembles(windowsize,windowsize, \
                         windowspacing,windowspacing, \
-                        window_px0,window_py0)
+                        window_px0,window_py0,
+                        maxvel,maxvel)
+
 print("Grid dimensions ", eg.gx,eg.gy)
+print("Number of ensembles ", eg.n)
 
 eg.compute_motion(nt,maxvel,maxvel,dt=1)
 
-eg.save_quivers(path, 'quiver_%04d.png', normed=True)
-eg.save_paths(path, 'path_%04d.png')
+eg.save_quivers(path, 'quiver_%04d.png', 'quiver2_%04d.png', normed=True)
+eg.save_paths(path, 'path_%04d.png', 'path2_%04d.png')
 
 eg.save_data(path)
 
