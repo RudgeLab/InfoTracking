@@ -9,6 +9,7 @@ from scipy.ndimage.filters import gaussian_filter
 from skimage.feature import register_translation
 from skimage.transform import downscale_local_mean
 from skimage.io import imread, imsave
+from skimage.filters import threshold_otsu, threshold_adaptive, threshold_triangle
 
 import matplotlib.pyplot as plt
 import infotracking
@@ -27,7 +28,7 @@ import sys
 path = sys.argv[1]
 nframes = int(sys.argv[2])
 #'/media/timrudge/tjr34_ntfs/Microscopy/Cavendish/10.01.16/Pos0000'
-infile = os.path.join(path, 'Frame%04dStep%04d.tif')
+infile = os.path.join(path, 'Frame%04dStep%04d.tiff')
 outfile = os.path.join(path, 'aligned_Frame%04dStep%04d.tiff')
 outfile_mask = os.path.join(path, 'aligned_mask_Frame%04dStep%04d.tiff')
 startframe = 0
@@ -60,7 +61,7 @@ for i in range(nframes-1):
     im2[im2<0] = 0
 
     # Register images
-    shift,_,_ = register_translation(im2,im1)
+    shift,_,_ = register_translation(im2/im2.max(),im1/im1.max())
     print(i, shift)
     shifts[i] = shift
 
@@ -77,8 +78,10 @@ for i in range(nframes-1):
     imsave(outfile%(0,i+1), offset_image.astype(np.uint16), plugin='tifffile')
 
     immask = offset_image
-    immask = gaussian_filter(immask,10)
-    mask = immask > bgval
+    immask[immask>10000] = 10000
+    immask = gaussian_filter(immask,5)
+    threshold = threshold_triangle(immask) 
+    mask = immask>threshold #immask > bgval
     imsave(outfile_mask%(0,i+1), mask.astype(np.uint16), plugin='tifffile')
 
     # Reset reference image and get next image in sequence

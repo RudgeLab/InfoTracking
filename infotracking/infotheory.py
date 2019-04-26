@@ -68,3 +68,24 @@ def conditional_entropy(hgram, ax):
     return je - ex 
 
 
+def normalised_conditional_entropy(hgram, ax):
+    '''
+    Conditional entropy H(Y|X)/H(Y) for joint histogram
+
+    hgram = joint histogram (2d array) 
+
+    ax = axis over which to sum to compute marginal distribution of X
+
+    returns: joint entropy value
+    '''
+    # Convert bins counts to probability values
+    pxy = hgram / float(np.sum(hgram))
+    px = np.sum(pxy, axis=ax) # marginal for x over y
+    py = np.sum(pxy, axis=1-ax) # marginal for y over x
+    je = joint_entropy(hgram)
+    # Now we can do the calculation using the pxy, px_py 2D arrays
+    nzsx = px > 0 # Only non-zero pxy values contribute to the sum
+    nzsy = py > 0 # Only non-zero pxy values contribute to the sum
+    ex = -np.sum(px[nzsx] * np.log2(px[nzsx]))
+    ey = -np.sum(py[nzsy] * np.log2(py[nzsy]))
+    return (je - ex) / ey 
