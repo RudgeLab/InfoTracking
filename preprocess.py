@@ -27,7 +27,7 @@ import sys
 path = sys.argv[1]
 nframes = int(sys.argv[2])
 #'/media/timrudge/tjr34_ntfs/Microscopy/Cavendish/10.01.16/Pos0000'
-infile = os.path.join(path, 'Frame%04dStep%04d.tif')
+infile = os.path.join(path, 'Frame%04dStep%04d.tiff')
 outfile = os.path.join(path, 'aligned_Frame%04dStep%04d.tiff')
 outfile_mask = os.path.join(path, 'aligned_mask_Frame%04dStep%04d.tiff')
 startframe = 0
@@ -76,10 +76,10 @@ for i in range(nframes-1):
     
     imsave(outfile%(0,i+1), offset_image.astype(np.uint16), plugin='tifffile')
 
-    immask = offset_image
-    immask = gaussian_filter(immask,10)
-    mask = immask > bgval
-    imsave(outfile_mask%(0,i+1), mask.astype(np.uint16), plugin='tifffile')
+    #immask = offset_image
+    #immask = gaussian_filter(immask,10)
+    #mask = immask > bgval
+    #imsave(outfile_mask%(0,i+1), mask.astype(np.uint16), plugin='tifffile')
 
     # Reset reference image and get next image in sequence
     im1 = offset_image
