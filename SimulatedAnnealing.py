@@ -1,12 +1,6 @@
 import numpy as np
 from scipy import ndimage
-<<<<<<< HEAD
-from scipy.optimize import minimize
-import matplotlib
-matplotlib.use('Agg')
-=======
 from scipy.optimize import minimize, basinhopping
->>>>>>> 190c16c43a0d819bf18c4f296c88703396bbb14c
 import matplotlib.pyplot as plt
 import skimage
 from skimage.filters import gaussian, sobel, threshold_triangle
@@ -145,17 +139,11 @@ def minimizer(cells, data):
     ang = [cell.angle for cell in cells]
     length = [cell.length for cell in cells]
     #rad = [cell.radius for cell in cells]
-<<<<<<< HEAD
-    params = posx + posy + ang + length# + rad
-    m = minimize(fit_func, params, args=(data,len(cells)), method='nelder-mead', options={'fatol':1e-6})
-    params = m.x
-=======
     params = posx + posy + ang + length #+ rad
     m = minimize(fit_func, params, args=(data,len(cells)), method='Nelder-Mead', options={'fatol':1e-6})
     #m = basinhopping(fit_func, params, minimizer_kwargs={'data':data,'ncells':len(cells)})
     params = m.x
     #print('Minimized solution: ', m)
->>>>>>> 190c16c43a0d819bf18c4f296c88703396bbb14c
     mincells = []
     ncells = len(cells)
     for i in range(ncells):
@@ -164,12 +152,8 @@ def minimizer(cells, data):
         length = params[i+ncells*3]
         #rad = params[i+ncells*4]
         mincells.append(Cell(pos,ang,length,6.,128))
-<<<<<<< HEAD
-    plot_solution(mincells, data)
-=======
     plt.subplot(1,3,2)
     #plot_axes(mincells, '--')
->>>>>>> 190c16c43a0d819bf18c4f296c88703396bbb14c
     print(len(mincells))
     print("Local minimization solution:")
     for cell in mincells:
@@ -178,13 +162,8 @@ def minimizer(cells, data):
         ", len = ", cell.length, \
         ", rad = ", cell.radius, \
         ", intensity = ", cell.intensity)
-<<<<<<< HEAD
-    err =  error_mse(data,mincells)
-    print("minimized solution error = ", err)
-=======
     err = error_mse(data,mincells)
     print("local minimized error = ", err)
->>>>>>> 190c16c43a0d819bf18c4f296c88703396bbb14c
     return(mincells, err)
 
 
