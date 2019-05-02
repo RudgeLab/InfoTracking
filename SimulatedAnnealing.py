@@ -1,6 +1,8 @@
 import numpy as np
 from scipy import ndimage
 from scipy.optimize import minimize
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import skimage
 from skimage.filters import gaussian, sobel
@@ -91,7 +93,22 @@ def error_entropy(data, cells):
     hgram, xedges, yedges = np.histogram2d( data.ravel(), test.ravel(), bins=32)
     cH = conditional_entropy(hgram, ax=0)
     H = entropy(hgram, ax=1)
-    return cH/H
+    lenerr = 0
+    angerr = 0
+    enderr = 0
+    for cell in cells:
+        lenerr += (cell.length-cell.orig_length)**2 
+        angerr += (cell.angle-cell.orig_angle)**2
+        profile = cell_profile(data, cell)
+        mx_profile = profile.max()
+        enderr += max(profile[-1], profile[0])/mx_profile
+
+    edge_weight = 0.
+    len_weight = 0.
+    ang_weight = 0. #1e-4
+    end_weight = 0.
+
+    return cH/H + len_weight*lenerr + ang_weight*angerr + end_weight*enderr
 
 def fit_func(params, data, ncells):
     cells = []
@@ -99,8 +116,8 @@ def fit_func(params, data, ncells):
         pos = np.array([params[i], params[i+ncells]])
         ang = params[i+ncells*2]
         length = params[i+ncells*3]
-        rad = params[i+ncells*4]
-        cells.append(Cell(pos,ang,length,rad,128))
+        #rad = params[i+ncells*4]
+        cells.append(Cell(pos,ang,length,6.,128))
     return(error_mse(data,cells))
 
 def minimizer(cells, data):
@@ -110,19 +127,18 @@ def minimizer(cells, data):
     posy = [p[1] for p in pos]
     ang = [cell.angle for cell in cells]
     length = [cell.length for cell in cells]
-    rad = [cell.radius for cell in cells]
-    params = posx + posy + ang + length + rad
-    m = minimize(fit_func, params, args=(data,len(cells)), method='BFGS')
-    params = m
-    print('Minimized solution: ', m)
+    #rad = [cell.radius for cell in cells]
+    params = posx + posy + ang + length# + rad
+    m = minimize(fit_func, params, args=(data,len(cells)), method='nelder-mead', options={'fatol':1e-6})
+    params = m.x
     mincells = []
     ncells = len(cells)
     for i in range(ncells):
         pos = np.array([params[i], params[i+ncells]])
         ang = params[i+ncells*2]
         length = params[i+ncells*3]
-        rad = params[i+ncells*4]
-        mincells.append(Cell(pos,ang,length,rad,128))
+        #rad = params[i+ncells*4]
+        mincells.append(Cell(pos,ang,length,6.,128))
     plot_solution(mincells, data)
     print(len(mincells))
     for cell in mincells:
@@ -131,7 +147,9 @@ def minimizer(cells, data):
         ", len = ", cell.length, \
         ", rad = ", cell.radius, \
         ", intensity = ", cell.intensity)
-    return(mincells, error_mse(data,mincells))
+    err =  error_mse(data,mincells)
+    print("minimized solution error = ", err)
+    return(mincells, err)
 
 
 
@@ -139,15 +157,15 @@ def minimizer(cells, data):
 def simulated_anneal(cells, \
                         data, \
                         nt=100000, temp_scale=1e-4, \
-                        dpos = 16., \
-                        dang = .2, \
-                        dlen = 5., \
-                        drad = 1., \
+                        dpos = 8., \
+                        dang = .1, \
+                        dlen = 2.5, \
+                        drad = .1, \
                         dintensity = 10., \
                         minlen = 10., \
                         maxlen = 100., \
                         minrad = 2., \
-                        maxrad = 5. \
+                        maxrad = 8. \
                         ):
     # Image dimensions
     w,h = data.shape
@@ -178,24 +196,30 @@ def simulated_anneal(cells, \
         cidx = random.randint(0,ncells-1)
         # Perturb shape parameters by random variables
         for cell in testcells[cidx:cidx+1]:
-            q = random.randint(0,3)
+            q = random.randint(0,2)
             if q==0:
                 cell.pos += [(random.random()-.5)*dpos, (random.random()-.5)*dpos]
+                #cell.pos += [random.randint(0,1)*2-1, random.randint(0,1)*2-1]
             elif q==1:
                 cell.angle += (random.random()-.5)*dang
             elif q==2:
                 cell.length += (random.random()-.5)*dlen
+                #cell.length += random.randint(0,1)*2-1
                 cell.length = np.clip(cell.length, minlen, maxlen)
-            #elif q==3:
-            #    cell.radius += (random.random()-.5)*drad
-            #    cell.radius = np.clip(cell.radius, minrad, maxrad)
             elif q==3:
-                cell.intensity += (random.random()-0.5)*dintensity
-                cell.intensity = np.clip(cell.intensity,0,255)
+                cell.radius += (random.random()-.5)*drad
+                cell.radius = np.clip(cell.radius, minrad, maxrad)
+            #elif q==3:
+            #    cell.intensity += (random.random()-0.5)*dintensity
+            #    cell.intensity = np.clip(cell.intensity,0,255)
             
 
-        # Calculate MSE error
         err = error_mse(data, testcells) 
+        print("simulated annealing error = ", err)
+
+        testcells, err = minimizer(testcells, data)
+        # Calculate MSE error
+        #err = error_mse(data, testcells) 
         
         # Calculate probability to accept change
         T = ( .75 - (t/(nt-1)) ) * temp_scale
@@ -267,10 +291,16 @@ def plot_solution(mincells, data):
         ang = cell.angle
         pos = cell.pos
         length = cell.length
+        rad = cell.radius
         ax = np.array([np.cos(ang), np.sin(ang)])
-        p0 = pos + ax*length*0.5
-        p1 = pos - ax*length*0.5
-        plt.plot([p0[0], p1[0]], [p0[1], p1[1]])
+        p0 = pos + ax*(length*0.5+rad)
+        p1 = pos - ax*(length*0.5+rad)
+        axperp = rad*np.array((ax[1],-ax[0]))
+        r0 = (p0+axperp).astype(np.int)
+        r1 = (p0-axperp).astype(np.int)
+        r2 = (p1-axperp).astype(np.int)
+        r3 = (p1+axperp).astype(np.int)
+        plt.plot([r0[0], r1[0], r2[0], r3[0], r0[0]], [r0[1], r1[1], r2[1], r3[1], r0[1]])
 
 def cell_profile(image, cell):
     ax = np.array([np.cos(cell.angle), np.sin(cell.angle)])
@@ -352,36 +382,37 @@ if __name__=='__main__':
     dataall = imread(fname, plugin='tifffile')
 
     # Starting parameters, initial guess
+    scale = 2
     ncells = 1  
-    minpos = [52.*2,36.*2]
+    minpos = [52.*scale,36.*scale]
     minang = 1.47
-    minlen = 30.*2
-    minrad = 2.5*2
+    minlen = 30.*scale
+    minrad = 3.*scale
     minintensity = 128
     cells = []
     for i in range(ncells):
         cells.append(Cell(np.array(minpos), minang, minlen, minrad, minintensity))
 
-    plt.figure(figsize=(12,4))
+    plt.figure(figsize=(24,8))
     for f in range(startframe, startframe+nframes, 1):
         data = dataall[f,:,:]
         w,h = data.shape
-        # Upsample image by 2x
+        # Upsample image by scale
         fim = fft2(data)
-        data = np.real(_upsampled_dft(fim, (w*2,h*2), upsample_factor=2)[::-1,::-1])
+        data = np.real(_upsampled_dft(fim, (w*scale,h*scale), upsample_factor=scale)[::-1,::-1])
         #data = (data-data.min())/(data.max()-data.min())
         data = data/data.max() 
         print("max data = ", data.max())
 
         minerr = 1e12
         for i in range(1):
-            cells,err = simulated_anneal(cells, data, nt = 200*len(cells)**2)
+            cells,err = simulated_anneal(cells, data, nt = 20*len(cells))
             #cells,err = minimizer(cells, data) 
-            cells = split_cells(data, cells, minlen=10.)
+            cells = split_cells(data, cells, minlen=20.)
             if err<minerr:
                 mincells = deepcopy(cells)
         plot_solution(mincells, data)
-        plt.savefig('simulated_annealing_frame%04d.png'%f)
+        plt.savefig('basinhop_frame%04d.png'%f)
         plt.pause(0.1)
 
     print('*** DONE ***')
