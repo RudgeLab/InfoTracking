@@ -140,7 +140,7 @@ def minimizer(cells, data):
     length = [cell.length for cell in cells]
     #rad = [cell.radius for cell in cells]
     params = posx + posy + ang + length #+ rad
-    m = minimize(fit_func, params, args=(data,len(cells)), method='Nelder-Mead', options={'fatol':1e-6})
+    m = minimize(fit_func, params, args=(data,len(cells)), method='Nelder-Mead', options={'fatol':1e-3})
     #m = basinhopping(fit_func, params, minimizer_kwargs={'data':data,'ncells':len(cells)})
     params = m.x
     #print('Minimized solution: ', m)
@@ -254,7 +254,6 @@ def simulated_anneal(cells, \
                 besterr = minerr
                 bestcells = deepcopy(testcells)
             mincells = deepcopy(testcells)
-            '''
             print('---')
             print('Accepted move at iteration %d, probability: %f'%(t,p))
             print('Lowest error so far: %f'%besterr)
@@ -266,8 +265,10 @@ def simulated_anneal(cells, \
                     ", rad = ", cell.radius, \
                          ", intensity = ", cell.intensity)
             print(err)
-            '''
             
+        plot_solution(mincells, data)
+        plt.pause(0.1)
+
         if minerr<0.01:
             break
         # End loop
@@ -388,13 +389,13 @@ def crop_data(im, sigma=10.):
     thresh = threshold_triangle(sim)
     bw = closing(sim > thresh, square(3))
 
-    # remove artifacts connected to image border
-    cleared = clear_border(bw)
-
     # label image regions
-    label_image = label(cleared)
+    label_image = label(bw)
+
     # Find biggest region
     max_area = 0.
+    minr,minc = 0,0
+    maxr,maxc = im.shape
     for region in regionprops(label_image):
         if region.area >= max_area:
             max_area = region.area
@@ -412,11 +413,12 @@ if __name__=='__main__':
     dataall = imread(fname, plugin='tifffile')
 
     # Starting parameters, initial guess
+    scale = 2
     ncells = 1
     minpos = [52.,36.] #[131.*2, 98.*2]
     minang = 1.47
-    minlen = 30.*2
-    minrad = 3.*2
+    minlen = 30.*scale
+    minrad = 3.*scale
     minintensity = 128
     cells = []
     for i in range(ncells):
