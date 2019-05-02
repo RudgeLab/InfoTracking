@@ -1,11 +1,15 @@
 import numpy as np
 from scipy import ndimage
+<<<<<<< HEAD
 from scipy.optimize import minimize
 import matplotlib
 matplotlib.use('Agg')
+=======
+from scipy.optimize import minimize, basinhopping
+>>>>>>> 190c16c43a0d819bf18c4f296c88703396bbb14c
 import matplotlib.pyplot as plt
 import skimage
-from skimage.filters import gaussian, sobel
+from skimage.filters import gaussian, sobel, threshold_triangle
 from skimage.feature.register_translation import _upsampled_dft
 from numpy.fft import fft2,ifft2
 from skimage.io import imread
@@ -18,8 +22,17 @@ from copy import deepcopy
 import infotracking
 from infotracking.infotheory import conditional_entropy, entropy
 
+from skimage import data
+from skimage.segmentation import clear_border
+from skimage.measure import label, regionprops
+from skimage.morphology import closing, square
+from skimage.color import label2rgb
+
+global next_cell_id
+next_cell_id = 0
 class Cell():
     def __init__(self, pos, angle, length, radius, intensity):
+        global next_cell_id
         self.pos = pos
         self.angle = angle
         self.length = length
@@ -27,6 +40,8 @@ class Cell():
         self.intensity = intensity
         self.orig_length = length # keep track of starting length of cell before optimization
         self.orig_angle = angle # keep track of starting angle of cell before optimization
+        self.id = next_cell_id
+        next_cell_id += 1
 
     def draw_cv(self, img):
         ax = np.array([np.cos(self.angle), np.sin(self.angle)])
@@ -61,12 +76,14 @@ def error_mse(data, cells):
     w,h = data.shape
     test = model(w, h, cells)
     err = test - data
-    msqerr = np.sqrt(np.mean(err*err))
+    msqerr = np.sqrt(np.sum(err*err)/62500.)
+    
     # Edges mean squared error
-    edge_data = sobel(data)
-    edge_test = sobel(test)
-    edge_err = edge_test/edge_test.max() - edge_data/edge_data.max()
-    edge_msqerr = np.mean(edge_err*edge_err)
+    #edge_data = sobel(data)
+    #edge_test = sobel(test)
+    #edge_err = edge_test/edge_test.max() - edge_data/edge_data.max()
+    #edge_msqerr = np.mean(edge_err*edge_err)
+    
     # Penalise unlikely changes in length and angle
     lenerr = 0
     angerr = 0
@@ -82,10 +99,10 @@ def error_mse(data, cells):
 
     edge_weight = 0.
     len_weight = 1e-4
-    ang_weight = 0. #1e-4
+    ang_weight = 1e-4
     end_weight = 1e-3
     #print('msqerr = %f, lenerr = %f, angerr = %f'%(msqerr,len_weight*lenerr,ang_weight*angerr))
-    return msqerr + edge_weight*edge_msqerr + len_weight*lenerr + ang_weight*angerr + end_weight*enderr
+    return msqerr + len_weight*lenerr + ang_weight*angerr + end_weight*enderr
 
 def error_entropy(data, cells):
     w,h = data.shape
@@ -128,9 +145,17 @@ def minimizer(cells, data):
     ang = [cell.angle for cell in cells]
     length = [cell.length for cell in cells]
     #rad = [cell.radius for cell in cells]
+<<<<<<< HEAD
     params = posx + posy + ang + length# + rad
     m = minimize(fit_func, params, args=(data,len(cells)), method='nelder-mead', options={'fatol':1e-6})
     params = m.x
+=======
+    params = posx + posy + ang + length #+ rad
+    m = minimize(fit_func, params, args=(data,len(cells)), method='Nelder-Mead', options={'fatol':1e-6})
+    #m = basinhopping(fit_func, params, minimizer_kwargs={'data':data,'ncells':len(cells)})
+    params = m.x
+    #print('Minimized solution: ', m)
+>>>>>>> 190c16c43a0d819bf18c4f296c88703396bbb14c
     mincells = []
     ncells = len(cells)
     for i in range(ncells):
@@ -139,16 +164,27 @@ def minimizer(cells, data):
         length = params[i+ncells*3]
         #rad = params[i+ncells*4]
         mincells.append(Cell(pos,ang,length,6.,128))
+<<<<<<< HEAD
     plot_solution(mincells, data)
+=======
+    plt.subplot(1,3,2)
+    #plot_axes(mincells, '--')
+>>>>>>> 190c16c43a0d819bf18c4f296c88703396bbb14c
     print(len(mincells))
+    print("Local minimization solution:")
     for cell in mincells:
         print("pos = ", cell.pos, \
         ", ang = ", cell.angle, \
         ", len = ", cell.length, \
         ", rad = ", cell.radius, \
         ", intensity = ", cell.intensity)
+<<<<<<< HEAD
     err =  error_mse(data,mincells)
     print("minimized solution error = ", err)
+=======
+    err = error_mse(data,mincells)
+    print("local minimized error = ", err)
+>>>>>>> 190c16c43a0d819bf18c4f296c88703396bbb14c
     return(mincells, err)
 
 
@@ -187,12 +223,13 @@ def simulated_anneal(cells, \
                  ", intensity = ", cell.intensity)
 
     for t in range(nt):
-        # Get the latest solution
-        if t%100==0:
+        # Get the latest solution or restart
+        if t%1000==0:
             testcells = deepcopy(bestcells)
             err = besterr
         else:
             testcells = deepcopy(mincells)
+        # Pick a random cell
         cidx = random.randint(0,ncells-1)
         # Perturb shape parameters by random variables
         for cell in testcells[cidx:cidx+1]:
@@ -214,13 +251,13 @@ def simulated_anneal(cells, \
             #    cell.intensity = np.clip(cell.intensity,0,255)
             
 
-        err = error_mse(data, testcells) 
-        print("simulated annealing error = ", err)
-
-        testcells, err = minimizer(testcells, data)
         # Calculate MSE error
-        #err = error_mse(data, testcells) 
+        err = error_mse(data, testcells) 
+        print("step error = ", err)
         
+        # Find local minimum
+        testcells,localerr = minimizer(testcells, data) 
+
         # Calculate probability to accept change
         T = ( .75 - (t/(nt-1)) ) * temp_scale
         T = max(0.,T)
@@ -264,6 +301,17 @@ def simulated_anneal(cells, \
     # Return the global minimum estimate
     return bestcells, besterr
 
+def plot_axes(cells, style='-'):
+    # Plot cell axes
+    for cell in cells:
+        ang = cell.angle
+        pos = cell.pos
+        length = cell.length
+        ax = np.array([np.cos(ang), np.sin(ang)])
+        p0 = pos + ax*length*0.5
+        p1 = pos - ax*length*0.5
+        plt.plot([p0[0], p1[0]], [p0[1], p1[1]], style)
+
 def plot_solution(mincells, data):
     plt.subplot(1,3,1)
     plt.cla()
@@ -271,36 +319,15 @@ def plot_solution(mincells, data):
     test = model(w, h, mincells)
     #test = test / test.max()
     plt.imshow(test)
-    # Plot cell axes
-    for cell in mincells:
-        ang = cell.angle
-        pos = cell.pos
-        length = cell.length
-        ax = np.array([np.cos(ang), np.sin(ang)])
-        p0 = pos + ax*length*0.5
-        p1 = pos - ax*length*0.5
-        plt.plot([p0[0], p1[0]], [p0[1], p1[1]])
+    plot_axes(mincells)
 
     #plt.colorbar()
     plt.subplot(1,3,2)
     plt.cla()
     plt.imshow(data)
     #plt.colorbar()
-    # Plot cell axes
-    for cell in mincells:
-        ang = cell.angle
-        pos = cell.pos
-        length = cell.length
-        rad = cell.radius
-        ax = np.array([np.cos(ang), np.sin(ang)])
-        p0 = pos + ax*(length*0.5+rad)
-        p1 = pos - ax*(length*0.5+rad)
-        axperp = rad*np.array((ax[1],-ax[0]))
-        r0 = (p0+axperp).astype(np.int)
-        r1 = (p0-axperp).astype(np.int)
-        r2 = (p1-axperp).astype(np.int)
-        r3 = (p1+axperp).astype(np.int)
-        plt.plot([r0[0], r1[0], r2[0], r3[0], r0[0]], [r0[1], r1[1], r2[1], r3[1], r0[1]])
+
+    plot_axes(mincells)
 
 def cell_profile(image, cell):
     ax = np.array([np.cos(cell.angle), np.sin(cell.angle)])
@@ -371,7 +398,31 @@ def split_cells(im, cells, minlen):
                  ", intensity = ", cell.intensity)
         print('length change = %f, angle change = %f'%(cell.length-cell.orig_length,cell.angle-cell.orig_angle))
 
+
+    err = error_mse(im, newcells)
+    print("sim anneal err = ", err)
     return newcells
+
+def crop_data(im, sigma=10.):
+    # Crop the data image to region containing cells
+    sim = gaussian(im, sigma)
+    thresh = threshold_triangle(sim)
+    bw = closing(sim > thresh, square(3))
+
+    # remove artifacts connected to image border
+    cleared = clear_border(bw)
+
+    # label image regions
+    label_image = label(cleared)
+    # Find biggest region
+    max_area = 0.
+    for region in regionprops(label_image):
+        if region.area >= max_area:
+            max_area = region.area
+            minr, minc, maxr, maxc = region.bbox
+    # Crop image to bounding box
+    crop_im = im[minr:maxr,minc:maxc]
+    return crop_im
 
 if __name__=='__main__':
     import sys
@@ -382,12 +433,11 @@ if __name__=='__main__':
     dataall = imread(fname, plugin='tifffile')
 
     # Starting parameters, initial guess
-    scale = 2
-    ncells = 1  
-    minpos = [52.*scale,36.*scale]
+    ncells = 1
+    minpos = [52.,36.] #[131.*2, 98.*2]
     minang = 1.47
-    minlen = 30.*scale
-    minrad = 3.*scale
+    minlen = 30.*2
+    minrad = 3.*2
     minintensity = 128
     cells = []
     for i in range(ncells):
@@ -400,19 +450,24 @@ if __name__=='__main__':
         # Upsample image by scale
         fim = fft2(data)
         data = np.real(_upsampled_dft(fim, (w*scale,h*scale), upsample_factor=scale)[::-1,::-1])
-        #data = (data-data.min())/(data.max()-data.min())
-        data = data/data.max() 
+        data = gaussian(data, 1.)
+        data = crop_data(data)
+        data = (data-data.min())/(data.max()-data.min())
+        #data = data/data.max() 
         print("max data = ", data.max())
+        print("data shape =", data.shape)
 
         minerr = 1e12
         for i in range(1):
             cells,err = simulated_anneal(cells, data, nt = 20*len(cells))
+            cells = split_cells(data, cells, minlen=10.)
             #cells,err = minimizer(cells, data) 
-            cells = split_cells(data, cells, minlen=20.)
+            print("error = ",err)
             if err<minerr:
                 mincells = deepcopy(cells)
-        plot_solution(mincells, data)
-        plt.savefig('basinhop_frame%04d.png'%f)
+        #plot_solution(mincells, data)
+        #plt.savefig('simulated_annealing_frame%04d.png'%f)
+        plt.savefig('low_iters_frame%04d.png'%f)
         plt.pause(0.1)
 
     print('*** DONE ***')
