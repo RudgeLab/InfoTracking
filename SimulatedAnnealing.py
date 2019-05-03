@@ -61,7 +61,8 @@ def draw_cells_cv(cells, w, h):
 def model(w, h, cells): 
     im = np.array(draw_cells_cv(cells, w, h)).astype(np.float32) 
     im = im/im.max()
-    im = gaussian(im, 4.)
+    #im = gaussian(im, 4.)
+    im = gaussian(im, 1.)
     return im
 
 def error_mse(data, cells):
@@ -128,7 +129,7 @@ def fit_func(params, data, ncells):
         ang = params[i+ncells*2]
         length = params[i+ncells*3]
         #rad = params[i+ncells*4]
-        cells.append(Cell(pos,ang,length,6.,128))
+        cells.append(Cell(pos,ang,length,8.,128))
     return(error_mse(data,cells))
 
 def minimizer(cells, data):
@@ -151,7 +152,7 @@ def minimizer(cells, data):
         ang = params[i+ncells*2]
         length = params[i+ncells*3]
         #rad = params[i+ncells*4]
-        mincells.append(Cell(pos,ang,length,6.,128))
+        mincells.append(Cell(pos,ang,length,8.,128))
     plt.subplot(1,3,2)
     #plot_axes(mincells, '--')
     print(len(mincells))
@@ -211,7 +212,7 @@ def simulated_anneal(cells, \
         # Pick a random cell
         cidx = random.randint(0,ncells-1)
         # Perturb shape parameters by random variables
-        for cell in testcells: #[cidx:cidx+1]:
+        for cell in testcells[cidx:cidx+1]:
             q = random.randint(0,2)
             if q==0:
                 cell.pos += [(random.random()-.5)*dpos, (random.random()-.5)*dpos]
@@ -232,10 +233,10 @@ def simulated_anneal(cells, \
 
         # Calculate MSE error
         err = error_mse(data, testcells) 
-        print("step error = ", err)
+        #print("step error = ", err)
             
         # Find local minimum
-        testcells,localerr = minimizer(testcells, data) 
+        #testcells,localerr = minimizer(testcells, data) 
 
         # Calculate probability to accept change
         T = ( .75 - (t/(nt-1)) ) * temp_scale
@@ -412,6 +413,7 @@ if __name__=='__main__':
     print(fname, nframes)
     dataall = imread(fname, plugin='tifffile')
 
+    '''
     # Starting parameters, initial guess
     scale = 2
     ncells = 1 
@@ -420,6 +422,15 @@ if __name__=='__main__':
     minlen = 64.
     minrad = 3.*scale
     minintensity = 128
+    '''
+    scale = 2 
+    ncells = 1 
+    minpos = [50., 30.] #[131.*2, 98.*2]
+    minang = 0.
+    minlen = 40.*scale
+    minrad = 4.*scale
+    minintensity = 128
+
     cells = []
     for i in range(ncells):
         cells.append(Cell(np.array(minpos), minang, minlen, minrad, minintensity))
@@ -440,7 +451,7 @@ if __name__=='__main__':
 
         minerr = 1e12
         for i in range(1):
-            cells,err = simulated_anneal(cells, data, nt = 20*len(cells))
+            cells,err = simulated_anneal(cells, data, nt = 200*len(cells))
             #cells,err = minimizer(cells, data) 
             cells = split_cells(data, cells, minlen=10.)
             print("error = ",err)
