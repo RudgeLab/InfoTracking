@@ -172,9 +172,9 @@ def minimizer(cells, data):
 def simulated_anneal(cells, \
                         data, \
                         nt=100000, temp_scale=1e-4, \
-                        dpos = 8., \
-                        dang = .1, \
-                        dlen = 2.5, \
+                        dpos = 6., \
+                        dang = 0.2, \
+                        dlen = 20., \
                         drad = .1, \
                         dintensity = 10., \
                         minlen = 10., \
@@ -211,7 +211,7 @@ def simulated_anneal(cells, \
         # Pick a random cell
         cidx = random.randint(0,ncells-1)
         # Perturb shape parameters by random variables
-        for cell in testcells[cidx:cidx+1]:
+        for cell in testcells: #[cidx:cidx+1]:
             q = random.randint(0,2)
             if q==0:
                 cell.pos += [(random.random()-.5)*dpos, (random.random()-.5)*dpos]
@@ -233,7 +233,7 @@ def simulated_anneal(cells, \
         # Calculate MSE error
         err = error_mse(data, testcells) 
         print("step error = ", err)
-        
+            
         # Find local minimum
         testcells,localerr = minimizer(testcells, data) 
 
@@ -265,9 +265,9 @@ def simulated_anneal(cells, \
                     ", rad = ", cell.radius, \
                          ", intensity = ", cell.intensity)
             print(err)
-            
-        plot_solution(mincells, data)
-        plt.pause(0.1)
+            #plot_solution(mincells, data)
+            #plt.pause(0.1)
+        
 
         if minerr<0.01:
             break
@@ -414,10 +414,10 @@ if __name__=='__main__':
 
     # Starting parameters, initial guess
     scale = 2
-    ncells = 1
-    minpos = [52.,36.] #[131.*2, 98.*2]
-    minang = 1.47
-    minlen = 30.*scale
+    ncells = 1 
+    minpos = [33.,57.] #[131.*2, 98.*2]
+    minang = 1.57
+    minlen = 64.
     minrad = 3.*scale
     minintensity = 128
     cells = []
@@ -441,8 +441,8 @@ if __name__=='__main__':
         minerr = 1e12
         for i in range(1):
             cells,err = simulated_anneal(cells, data, nt = 20*len(cells))
-            cells = split_cells(data, cells, minlen=10.)
             #cells,err = minimizer(cells, data) 
+            cells = split_cells(data, cells, minlen=10.)
             print("error = ",err)
             if err<minerr:
                 mincells = deepcopy(cells)
