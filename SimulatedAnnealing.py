@@ -414,7 +414,7 @@ if __name__=='__main__':
     dataall = imread(fname, plugin='tifffile')
 
     '''
-    # Starting parameters, initial guess
+    # Starting parameters, initial guess - experimental data
     scale = 2
     ncells = 1 
     minpos = [33.,57.] #[131.*2, 98.*2]
@@ -423,12 +423,22 @@ if __name__=='__main__':
     minrad = 3.*scale
     minintensity = 128
     '''
+    '''
+    # Params for weiner
     scale = 2 
     ncells = 1 
     minpos = [50., 30.] #[131.*2, 98.*2]
     minang = 0.
     minlen = 40.*scale
     minrad = 4.*scale
+    minintensity = 128
+    '''
+    scale = 2 
+    ncells = 1 
+    minpos = [50., 30.] #[131.*2, 98.*2]
+    minang = 0.
+    minlen = 20.*scale
+    minrad = 2.*scale
     minintensity = 128
 
     cells = []
@@ -453,7 +463,7 @@ if __name__=='__main__':
         for i in range(1):
             cells,err = simulated_anneal(cells, data, nt = 200*len(cells))
             #cells,err = minimizer(cells, data) 
-            cells = split_cells(data, cells, minlen=10.)
+            cells = split_cells(data, cells, minlen=5.)
             print("error = ",err)
             if err<minerr:
                 mincells = deepcopy(cells)
