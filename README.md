@@ -9,7 +9,9 @@ Requires:
 
 Jupyter required for notebook based data exploration and plotting. 
 
-`conda create -n infotracking numpy scipy matplotlib jupyter`
+`conda create -n infotracking python=3.6 numpy scipy matplotlib jupyter`
+
+`conda install -c conda-forge opencv`
 
 `source activate infotracking`
 
