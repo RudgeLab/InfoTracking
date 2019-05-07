@@ -11,9 +11,9 @@ Jupyter required for notebook based data exploration and plotting.
 
 `conda create -n infotracking python=3.6 numpy scipy scikit-image matplotlib jupyter`
 
-`conda install -c conda-forge opencv`
-
 `source activate infotracking`
+
+`conda install -c conda-forge opencv`
 
 `python EM.py <filename_pattern> <start_frame> <number_frames>`
 
