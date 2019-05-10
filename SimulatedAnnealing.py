@@ -1,6 +1,8 @@
 import numpy as np
 from scipy import ndimage
 from scipy.optimize import minimize, basinhopping
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import skimage
 from skimage.filters import gaussian, sobel, threshold_triangle
@@ -61,6 +63,7 @@ def draw_cells_cv(cells, w, h):
 def model(w, h, cells): 
     im = np.array(draw_cells_cv(cells, w, h)).astype(np.float32) 
     im = im/im.max()
+    #im = im/255.
     #im = gaussian(im, 4.)
     im = gaussian(im, 1.)
     return im
@@ -123,36 +126,40 @@ def error_entropy(data, cells):
     return cH/H + len_weight*lenerr + ang_weight*angerr + end_weight*enderr
 
 def fit_func(params, data, ncells):
+    maxposx,maxposy = data.shape
+    maxlength = 100
     cells = []
     for i in range(ncells):
-        pos = np.array([params[i], params[i+ncells]])
-        ang = params[i+ncells*2]
-        length = params[i+ncells*3]
+        pos = np.array([params[i]*maxposx, params[i+ncells]*maxposy])
+        ang = params[i+ncells*2]*np.pi
+        length = params[i+ncells*3]*maxlength
         #rad = params[i+ncells*4]
-        cells.append(Cell(pos,ang,length,8.,128))
+        cells.append(Cell(pos,ang,length,4.,128))
     return(error_mse(data,cells))
 
 def minimizer(cells, data):
+    maxposx,maxposy = data.shape
+    maxlength = 100
     pos = []
     pos = [cell.pos for cell in cells]
-    posx = [p[0] for p in pos]
-    posy = [p[1] for p in pos]
-    ang = [cell.angle for cell in cells]
-    length = [cell.length for cell in cells]
+    posx = [p[0]/maxposx for p in pos]
+    posy = [p[1]/maxposy for p in pos]
+    ang = [cell.angle/np.pi for cell in cells]
+    length = [cell.length/maxlength for cell in cells]
     #rad = [cell.radius for cell in cells]
     params = posx + posy + ang + length #+ rad
-    m = minimize(fit_func, params, args=(data,len(cells)), method='Nelder-Mead', options={'fatol':1e-3})
+    m = minimize(fit_func, params, args=(data,len(cells)), method='Nelder-Mead', options={'fatol':1e-8})
     #m = basinhopping(fit_func, params, minimizer_kwargs={'data':data,'ncells':len(cells)})
     params = m.x
     #print('Minimized solution: ', m)
     mincells = []
     ncells = len(cells)
     for i in range(ncells):
-        pos = np.array([params[i], params[i+ncells]])
-        ang = params[i+ncells*2]
-        length = params[i+ncells*3]
+        pos = np.array([params[i]*maxposx, params[i+ncells]*maxposy])
+        ang = params[i+ncells*2]*np.pi
+        length = params[i+ncells*3]*maxlength
         #rad = params[i+ncells*4]
-        mincells.append(Cell(pos,ang,length,8.,128))
+        mincells.append(Cell(pos,ang,length,4.,128))
     plt.subplot(1,3,2)
     #plot_axes(mincells, '--')
     print(len(mincells))
@@ -223,12 +230,12 @@ def simulated_anneal(cells, \
                 cell.length += (random.random()-.5)*dlen
                 #cell.length += random.randint(0,1)*2-1
                 cell.length = np.clip(cell.length, minlen, maxlen)
-            elif q==3:
-                cell.radius += (random.random()-.5)*drad
-                cell.radius = np.clip(cell.radius, minrad, maxrad)
             #elif q==3:
-            #    cell.intensity += (random.random()-0.5)*dintensity
-            #    cell.intensity = np.clip(cell.intensity,0,255)
+            #    cell.radius += (random.random()-.5)*drad
+            #    cell.radius = np.clip(cell.radius, minrad, maxrad)
+            elif q==3:
+                cell.intensity += (random.random()-0.5)*dintensity
+                cell.intensity = np.clip(cell.intensity,0,255)
             
 
         # Calculate MSE error
@@ -413,8 +420,9 @@ if __name__=='__main__':
     print(fname, nframes)
     dataall = imread(fname, plugin='tifffile')
 
+    
+    # Starting parameters, initial guess - experimental data 1-16cells
     '''
-    # Starting parameters, initial guess - experimental data
     scale = 2
     ncells = 1 
     minpos = [33.,57.] #[131.*2, 98.*2]
@@ -422,7 +430,7 @@ if __name__=='__main__':
     minlen = 64.
     minrad = 3.*scale
     minintensity = 128
-    '''
+    ''' 
     '''
     # Params for weiner
     scale = 2 
@@ -433,13 +441,16 @@ if __name__=='__main__':
     minrad = 4.*scale
     minintensity = 128
     '''
+    
+    # Params for cm_crop
     scale = 2 
-    ncells = 1 
+    ncells = 1
     minpos = [50., 30.] #[131.*2, 98.*2]
     minang = 0.
     minlen = 20.*scale
     minrad = 2.*scale
     minintensity = 128
+    
 
     cells = []
     for i in range(ncells):
@@ -461,9 +472,9 @@ if __name__=='__main__':
 
         minerr = 1e12
         for i in range(1):
-            cells,err = simulated_anneal(cells, data, nt = 200*len(cells))
-            #cells,err = minimizer(cells, data) 
+            cells,err = simulated_anneal(cells, data, nt = 800*len(cells))
             cells = split_cells(data, cells, minlen=5.)
+            #cells,err = minimizer(cells, data) 
             print("error = ",err)
             if err<minerr:
                 mincells = deepcopy(cells)
