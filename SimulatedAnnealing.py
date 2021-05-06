@@ -64,8 +64,8 @@ def model(w, h, cells):
     im = np.array(draw_cells_cv(cells, w, h)).astype(np.float32) 
     im = im/im.max()
     #im = im/255.
-    im = gaussian(im, 4.)
-    #im = gaussian(im, 1.)
+    #im = gaussian(im, 4.)
+    im = gaussian(im, 1.)
     return im
 
 def error_mse(data, cells):
@@ -420,7 +420,6 @@ if __name__=='__main__':
     print(fname, nframes)
     dataall = imread(fname, plugin='tifffile')
 
-    
     # Starting parameters, initial guess - experimental data new data
     scale = 2
     ncells = 3
@@ -429,14 +428,10 @@ if __name__=='__main__':
     minlen = [32.]*ncells
     minrad = [3.*scale]*ncells
     minintensity = 128
-    '''
     # Starting parameters, initial guess - experimental data 1-16cells
+    '''
     scale = 2
-    ncells = 1
-    minpos = [33.,57.] #[131.*2, 98.*2]
-    minang = 1.57
-    minlen = 64.
-    minrad = 3.*scale
+    ncells = 1 
     minintensity = 128
     '''
     '''
@@ -461,14 +456,28 @@ if __name__=='__main__':
     '''
     '''
     # Params for model_based
+    minintensity = 128
+    ''' 
+    '''
+    # Params for weiner
+    scale = 2 
+    ncells = 1 
+    minpos = [50., 30.] #[131.*2, 98.*2]
+    minang = 0.
+    minlen = 40.*scale
+    minrad = 4.*scale
+    minintensity = 128
+    '''
+    
+    # Params for cm_crop
     scale = 2 
     ncells = 1
     minpos = [50., 30.] #[131.*2, 98.*2]
     minang = 0.
     minlen = 20.*scale
-    minrad = 1.5*scale
+    minrad = 2.*scale
     minintensity = 128
-    '''
+    
 
     cells = []
     for i in range(ncells):
@@ -492,7 +501,6 @@ if __name__=='__main__':
         for i in range(1):
             cells,err = simulated_anneal(cells, data, nt = 800*len(cells))
             cells = split_cells(data, cells, minlen=5.)
-            #cells,err = simulated_anneal(cells, data, nt = 200*len(cells))
             #cells,err = minimizer(cells, data) 
             print("error = ",err)
             if err<minerr:
