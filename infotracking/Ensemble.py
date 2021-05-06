@@ -30,17 +30,12 @@ class EnsembleState():
         self.imw = imw
         self.imh = imh
         self.imd = 1
-        self.fluo_imd = 3
         self.im1_roi = np.zeros((self.w,self.h,self.imd))
         self.im2_roi = np.zeros((self.w,self.h,self.imd))
-        self.fluo_im1_roi = np.zeros((self.w,self.h,self.fluo_imd))
-        self.fluo_im2_roi = np.zeros((self.w,self.h,self.fluo_imd))
 
 
     def entropy_map(self, image1, 
             image2, 
-            fluo_image1,
-            fluo_image2,
             mask, 
             vx_max=7, vy_max=7, 
             nbins=16, 
@@ -74,8 +69,6 @@ class EnsembleState():
         # Analyse image region
         self.im1_roi = image1[ipx1:ipx1+self.w, \
                                     ipy1:ipy1+self.h]
-        self.fluo_im1_roi = fluo_image1[ipx1:ipx1+self.w, \
-                                        ipy1:ipy1+self.h, :]
 
         # Entropy of image region, if too low cannot compute velocity
         hgram, edges = np.histogram( self.im1_roi.ravel(), \
@@ -104,44 +97,9 @@ class EnsembleState():
         # Return the map of conditional entropy at each offset
         return True,log_likelihood
 
-    def neg_log_likelihood(self, v, image1, image2, nbins, velstd):
-        ipx1 = int(self.pos1[0])
-        ipy1 = int(self.pos1[1])
-        im1_roi = image1[ipx1:ipx1+self.w, \
-                                    ipy1:ipy1+self.h]
-        if ipx1<0 or ipy1<0 or ipx1+self.w>=self.imw or ipy1+self.h>=self.imh:
-            return np.inf
-
-        ipx2 = int(self.pos1[0]+v[0])
-        ipy2 = int(self.pos1[1]+v[1])
-        if ipx2>=0 and ipy2>=0 and ipx2+self.w<self.imw and ipy2+self.h<self.imh:
-            im2_roi = image2[ipx2:ipx2+self.w, \
-                                ipy2:ipy2+self.h]
-            hgram_offset, xedges, yedges = np.histogram2d( im1_roi.ravel(), im2_roi.ravel(), \
-                                                bins=np.arange(0, 2**11, 17))
-            ll = infotheory.mutual_information(hgram_offset)
-            ll -= (v[0]**2 + v[1]**2)/(2*velstd**2)
-        else:
-            ll = -np.inf
-        return -ll
-
-    def find_peak(self, im, scale=16):
-        # Find peak in array im by upsampling and locating maximum
-        '''
-        fim = fft2(im)
-        upim = np.real(_upsampled_dft(fim, im.shape[0]*scale, scale)[::-1,::-1])
-        peakx,peaky = np.where(upim==np.max(upim))
-        pos = np.array([peakx[0],peaky[0]]) / scale
-        '''
-        peakx,peaky = np.where(im==np.max(im))
-        pos = np.array([peakx[0],peaky[0]])  
-        return pos
-
     def compute_mean_velocity(self, 
             image1, 
             image2, 
-            fluo_image1, 
-            fluo_image2, 
             mask, 
             llmap, 
             velstd, 
@@ -183,18 +141,6 @@ class EnsembleState():
         rspl = RectBivariateSpline(pkx[:,0], pky[0,:], llmap, kx=2,ky=2)
         self.max_ll = rspl(minx[0], minx[1]) # np.max(self.llmap)
         print('max_ll ', self.max_ll)
-        '''
-        sol = minimize(self.neg_log_likelihood, 
-                x0=[0,0], 
-                method='Nelder-Mead',
-                #bounds=[(-7,7), (-7,7)],
-                #options={'eps': 2., 'disp': 0},
-                options={'initial_simplex': np.array([[-16,-16],[16,-16], [0,16]])},
-                args=(image1,image2,16,velstd)
-                )
-        #print(sol)
-        vx,vy = sol.x
-        '''
         vx,vy = minx
         print('fmin found solution:')
         print(minx)
@@ -222,53 +168,8 @@ class EnsembleState():
         if ipx2>=0 and ipy2>=0 and ipx2+self.w<self.imw and ipy2+self.h<self.imh:
             self.im2_roi = image2[ipx2:ipx2+self.w, \
                                     ipy2:ipy2+self.h]
-            self.fluo_im2_roi = fluo_image2[ipx2:ipx2+self.w, \
-                                            ipy2:ipy2+self.h, :]
         else:
             self.im2_roi = np.zeros((self.w,self.h,self.imd))
-            self.fluo_im2_roi = np.zeros((self.w,self.h,self.fluo_imd))
-        return self.vel
-
-    def compute_mean_velocity_orig(self, llmap, threshold=0.75):
-        '''
-        Compute the mean velocity of the ensemble as the offset with maximum
-        log likelihood, using the grid llmap 
-
-        Sub-pixel peak position is found from weighted sum of offsets where:
-            (llmap-minimum)>threshold*(maximum-minimum)
-
-        Returns velocity in x,y and maximum value of log likelihood
-        '''
-        # Size of map
-        w,h = llmap.shape
-        ww = (w-1)/2
-        hh = (h-1)/2
-
-        mx = np.max(llmap,axis=(0,1))
-        mn = np.min(llmap,axis=(0,1))
-        if mx-mn<1e-6:
-            vx,vy = np.inf,np.inf
-        else:
-            pk = llmap-mn > threshold*(mx-mn)
-            pky,pkx = np.meshgrid(np.arange(-ww,ww+1), np.arange(-hh,hh+1))
-            weight = pk*(llmap-mn)
-            vx = np.sum(pkx*weight)/np.sum(weight)
-            vy = np.sum(pky*weight)/np.sum(weight)
-
-
-        # Store velocity, image roi in next time step, and maximum log likelihood
-        self.vel = [vx,vy]
-        self.pos2 = self.pos1 + self.vel
-
-        ipx2 = int(self.pos2[0])
-        ipy2 = int(self.pos2[1])
-        if ipx2>=0 and ipy2>=0 and ipx2+self.w<self.imw and ipy2+self.h<self.imh:
-            self.im2_roi = self.image2[ipx2:ipx2+self.w, \
-                                    ipy2:ipy2+self.h]
-        else:
-            self.im2_roi = np.zeros((self.w,self.h,self.imd))
-        self.max_ll = mx
-        self.fluo = self.fluorescence()
         return self.vel
 
     def save_rois(self, file_pattern1, file_pattern2):
@@ -315,23 +216,13 @@ class Ensemble():
         # Return array of ensemble mask flags at each time (True if ensemble is inside colony)
         return np.array([s.in_mask for t,s in self.states.items()])
 
-    def dfluo(self):
-        return np.array(
-                [(s.fluo_im1_roi - s.fluo_im2_roi).mean(axis=(0,1)) for t,s in self.states.items()]
-                ).transpose()
-
-    def fluo(self):
-        return np.array(
-                [s.fluo_im1_roi.mean(axis=(0,1)) for t,s in self.states.items()]
-                ).transpose()
 
 class EnsembleGrid:
-    def __init__(self, images, fluo_images, masks, mask_threshold):
+    def __init__(self, images, masks, mask_threshold):
         # Dictionary of ensembles mapped by grid position
         self.ensembles = {} 
         # Array of images for computing ensembles
         self.images = images
-        self.fluo_images = fluo_images
         self.masks = masks
         self.mask_threshold = mask_threshold
         s = images[0].shape
@@ -341,7 +232,6 @@ class EnsembleGrid:
             self.imd = s[2]
         else:
             self.imd = 1
-        self.fluo_imd = 3
         self.nt = 0
         self.gx, self.gy = 0,0
 
@@ -381,16 +271,12 @@ class EnsembleGrid:
             state0 = ensemble.states[0]
             mask,ll = state0.entropy_map(self.images[0,:,:], \
                                        self.images[1,:,:], 
-                                       self.fluo_images[0,:,:,:],
-                                       self.fluo_images[1,:,:,:], 
                                        self.masks[0,:,:], \
                                        vx_max, vy_max, nbins=256, hmax=1e10,
                                        mask_threshold=self.mask_threshold)
             if mask:
                 vel,mx = state0.compute_mean_velocity(self.images[0,:,:], \
                                         self.images[1,:,:], 
-                                        self.fluo_images[0,:,:,:], 
-                                        self.fluo_images[1,:,:,:], 
                                         self.masks[0,:,:], 
                                         ll, velstd)
                 for t in range(1,nt):
@@ -401,16 +287,12 @@ class EnsembleGrid:
                     mask = False 
                     mask,ll = state.entropy_map(self.images[t,:,:], \
                                             self.images[t+1,:,:], 
-                                            self.fluo_images[t,:,:,:], 
-                                            self.fluo_images[t+1,:,:,:], 
                                             self.masks[t,:,:], \
                                             vx_max, vy_max, nbins=256, hmax=1e10,
                                             mask_threshold=self.mask_threshold)
                     if mask:
                         vel,mx = state.compute_mean_velocity(self.images[t,:,:], \
                                             self.images[t+1,:,:], 
-                                            self.fluo_images[t,:,:,:], 
-                                            self.fluo_images[t+1,:,:,:], 
                                             self.masks[t,:,:], 
                                             ll, velstd)
                     else:
@@ -472,18 +354,6 @@ class EnsembleGrid:
             max_ll[ix,iy,:] = e.max_ll()
         return max_ll
 
-    def dfluo(self):
-        dfluo = np.zeros((self.gx, self.gy, self.fluo_imd, self.nt))
-        for (ix,iy),e in self.ensembles.items():
-            dfluo[ix,iy,:,:] = e.dfluo()
-        return dfluo
-
-    def fluo(self):
-        fluo = np.zeros((self.gx, self.gy, self.fluo_imd, self.nt))
-        for (ix,iy),e in self.ensembles.items():
-            fluo[ix,iy,:,:] = e.fluo()
-        return fluo
-
     def save_data(self, outdir):
         fname = os.path.join(outdir, 'pos.np')
         np.save(fname, self.pos())
@@ -493,12 +363,6 @@ class EnsembleGrid:
 
         fname = os.path.join(outdir, 'max_ll.np')
         np.save(fname, self.max_ll())
-
-        fname = os.path.join(outdir, 'fluo.np')
-        np.save(fname, self.fluo())
-
-        fname = os.path.join(outdir, 'dfluo.np')
-        np.save(fname, self.dfluo())
 
     def save_rois(self, outdir, file_pattern):
         for (ix,iy),e in self.ensembles.items():
