@@ -5,7 +5,6 @@ import infotracking.infotheory as infotheory
 import matplotlib
 import matplotlib.pyplot as plt
 import os
-from skimage.feature.register_translation import _upsampled_dft
 from skimage.filters import gaussian,median
 from numpy.fft import fft2
 from scipy.interpolate import RectBivariateSpline
@@ -60,7 +59,7 @@ class EnsembleState():
         if np.mean(self.mask_roi)<mask_threshold:
         #if self.mask_roi[int(self.w/2),int(self.h/2)]==0:
             # Outside colony
-            #print('Outside colony')
+            print('Outside colony')
             return False, log_likelihood
         else:
             self.in_mask = True
@@ -139,8 +138,6 @@ class EnsembleState():
             return -rspl(x[0],x[1])
         minx = fmin(rsplfunc, [initx,inity], disp=False)
         rspl = RectBivariateSpline(pkx[:,0], pky[0,:], llmap, kx=2,ky=2)
-        self.max_ll = rspl(minx[0], minx[1]) # np.max(self.llmap)
-        print('max_ll ', self.max_ll)
         vx,vy = minx
         print('fmin found solution:')
         print(minx)
@@ -156,6 +153,13 @@ class EnsembleState():
         #plt.show()
 
         # Store velocity, image roi in next time step, and maximum log likelihood
+        if abs(vx)>ww or abs(vy)>hh:
+            print('Velocity out of bounbds: ', vx, vy)
+            vx,vy = 0,0
+            self.max_ll = rspl(0, 0) # np.max(self.llmap)
+        else:
+            self.max_ll = rspl(minx[0], minx[1]) # np.max(self.llmap)
+        print('max_ll ', self.max_ll)
         self.vel = [vx,vy]
         self.pos2 = self.pos1 + self.vel
 
@@ -272,7 +276,7 @@ class EnsembleGrid:
             mask,ll = state0.entropy_map(self.images[0,:,:], \
                                        self.images[1,:,:], 
                                        self.masks[0,:,:], \
-                                       vx_max, vy_max, nbins=256, hmax=1e10,
+                                       vx_max, vy_max, nbins=16, hmax=1e10,
                                        mask_threshold=self.mask_threshold)
             if mask:
                 vel,mx = state0.compute_mean_velocity(self.images[0,:,:], \
@@ -288,7 +292,7 @@ class EnsembleGrid:
                     mask,ll = state.entropy_map(self.images[t,:,:], \
                                             self.images[t+1,:,:], 
                                             self.masks[t,:,:], \
-                                            vx_max, vy_max, nbins=256, hmax=1e10,
+                                            vx_max, vy_max, nbins=16, hmax=1e10,
                                             mask_threshold=self.mask_threshold)
                     if mask:
                         vel,mx = state.compute_mean_velocity(self.images[t,:,:], \
@@ -361,8 +365,8 @@ class EnsembleGrid:
         fname = os.path.join(outdir, 'vel.np')
         np.save(fname, self.vel())
 
-        fname = os.path.join(outdir, 'max_ll.np')
-        np.save(fname, self.max_ll())
+        #fname = os.path.join(outdir, 'max_ll.np')
+        #np.save(fname, self.max_ll())
 
     def save_rois(self, outdir, file_pattern):
         for (ix,iy),e in self.ensembles.items():
