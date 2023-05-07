@@ -255,8 +255,8 @@ class EnsembleGrid:
         self.nt = 1
         self.gw,self.gh = w,h
         self.sw,self.sh = sw,sh
-        for ix in range(2, self.gx-2):
-            for iy in range(2, self.gy-2):
+        for ix in range(0, self.gx):
+            for iy in range(0, self.gy):
                 pos = np.array([px0+ix*sw, py0+iy*sh])
                 self.ensembles[(ix,iy)] = Ensemble()
                 state = EnsembleState(self.imw,self.imh, 
@@ -301,11 +301,11 @@ class EnsembleGrid:
                                             ll, velstd)
                     else:
                         print('Outside mask ', (ix,iy))
-                        state.vel = [0,0]
+                        state.vel = [np.nan,np.nan]
                         mx = 0
                     ensemble[t] = state
             else:
-                state0.vel = [0,0]
+                state0.vel = [np.nan,np.nan]
                 mx = 0
 
     def mask(self):
@@ -361,6 +361,9 @@ class EnsembleGrid:
     def save_data(self, outdir):
         fname = os.path.join(outdir, 'pos.np')
         np.save(fname, self.pos())
+
+        fname = os.path.join(outdir, 'pos2.np')
+        np.save(fname, self.pos2())
 
         fname = os.path.join(outdir, 'vel.np')
         np.save(fname, self.vel())
