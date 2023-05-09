@@ -14,7 +14,7 @@ path = '.'
 
 startframe = 70
 step = 1
-nframes = 2
+nframes = 30
 nt = nframes-1
 
 windowsize = 64 
@@ -23,20 +23,14 @@ window_px0 = 0
 window_py0 = 0
 
 maxvel = 7
-#------------------------------------------------
-
-# File names and paths
-impath = os.path.join(path, 'masked image')
-mskpath = os.path.join(path, 'mask')
-filename = os.path.join(impath, '%d.tif')
-maskfilename = os.path.join(mskpath, '%d.tif') 
 
 #------------------------------------------------
 # Run analysis
 im = imread('../10x_1.5x_-5_pAAA_MG_1_MMStack_Pos9.ome.tif')
 im = im[startframe:startframe+(nframes * step):step,:,:,1]
-mask = imread('../C2-10x_1.5x_-5_pAAA_MG_1_MMStack_Pos9.ome.70-71.mask.tif')
+mask = imread('../C2-10x_1.5x_-5_pAAA_MG_1_MMStack_Pos9.ome.mask.tif')
 mask = mask / mask.max() # Make sure 0-1
+mask = mask[startframe:startframe+(nframes * step):step,:,:]
 
 print("Image dimensions ",im.shape)
 eg = Ensemble.EnsembleGrid(im, mask, mask_threshold=1)
