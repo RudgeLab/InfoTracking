@@ -49,7 +49,7 @@ for frame in range(nt):
     radpos[frame,:,:] = edt[frame, pos[:,:,frame,0].astype(int)+31, pos[:,:,frame,1].astype(int)+31]
 
 # Area and estimated radius of colony
-area = mask_all[start_frame + frame*step:start_frame + (frame+nt)*step:step,:,:].sum(axis=(1,2))
+area = mask_all[start_frame:start_frame + nt*step:step,:,:].sum(axis=(1,2))
 radius = np.sqrt(area / np.pi)
 
 # Save results
