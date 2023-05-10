@@ -283,30 +283,32 @@ class EnsembleGrid:
                                         self.images[1,:,:], 
                                         self.masks[0,:,:], 
                                         ll, velstd)
-                for t in range(1,nt):
-                    prevstate = ensemble.states[t-1]
-                    state = EnsembleState(self.imw,self.imh, pos1=prevstate.pos1, t1=t, t2=t+dt, \
-                                            prev_vel=prevstate.vel,
-                                            w=self.gw, h=self.gh)
-                    mask = False 
-                    mask,ll = state.entropy_map(self.images[t,:,:], \
-                                            self.images[t+1,:,:], 
-                                            self.masks[t,:,:], \
-                                            vx_max, vy_max, nbins=16, hmax=1e10,
-                                            mask_threshold=self.mask_threshold)
-                    if mask:
-                        vel,mx = state.compute_mean_velocity(self.images[t,:,:], \
-                                            self.images[t+1,:,:], 
-                                            self.masks[t,:,:], 
-                                            ll, velstd)
-                    else:
-                        print('Outside mask ', (ix,iy))
-                        state.vel = [np.nan,np.nan]
-                        mx = 0
-                    ensemble[t] = state
             else:
+                print('Outside mask ', (ix,iy))
                 state0.vel = [np.nan,np.nan]
                 mx = 0
+
+            for t in range(1,nt):
+                prevstate = ensemble.states[t-1]
+                state = EnsembleState(self.imw,self.imh, pos1=prevstate.pos1, t1=t, t2=t+dt, \
+                                        prev_vel=prevstate.vel,
+                                        w=self.gw, h=self.gh)
+                mask = False 
+                mask,ll = state.entropy_map(self.images[t,:,:], \
+                                        self.images[t+1,:,:], 
+                                        self.masks[t,:,:], \
+                                        vx_max, vy_max, nbins=16, hmax=1e10,
+                                        mask_threshold=self.mask_threshold)
+                if mask:
+                    vel,mx = state.compute_mean_velocity(self.images[t,:,:], \
+                                        self.images[t+1,:,:], 
+                                        self.masks[t,:,:], 
+                                        ll, velstd)
+                else:
+                    print('Outside mask ', (ix,iy))
+                    state.vel = [np.nan,np.nan]
+                    mx = 0
+                ensemble[t] = state
 
     def mask(self):
         mask = np.zeros((self.gx,self.gy,self.nt))
