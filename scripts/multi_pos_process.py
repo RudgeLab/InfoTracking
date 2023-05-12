@@ -180,6 +180,21 @@ def fit_velocity_profile(path):
 col_pos = [5, 6, 7, 8, 9]
 path_data = os.path.join(".", "Data")
 
+# for compute_velocity
+startframe = 10
+step = 1
+nframes = 100
+nt = nframes-1
+
+# window size of square used for computing velocity
+windowsize = 64
+# distance between windows, so they overlap
+windowspacing = 32
+window_px0 = 0
+window_py0 = 0
+
+# velocity threshold
+maxvel = 7
 
 for col in col_pos:
     # create a folder for storing the resulting data
@@ -193,22 +208,6 @@ for col in col_pos:
     # Read files
     weka = imread(wekafn)
     im = imread(imfn)
-
-    # for compute_velocity
-    startframe = 10
-    step = 1
-    nframes = 100
-    nt = nframes-1
-
-    # window size of square used for computing velocity
-    windowsize = 64
-    # distance between windows, so they overlap
-    windowspacing = 32
-    window_px0 = 0
-    window_py0 = 0
-
-    # velocity threshold
-    maxvel = 7
 
     #make_mask(weka, mask_outfn)
     mask = imread(mask_outfn)
