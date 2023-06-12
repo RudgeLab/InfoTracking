@@ -36,6 +36,7 @@ class EnsembleState():
     def entropy_map(self, image1, 
             image2, 
             mask, 
+            init_vel,
             vx_max=7, vy_max=7, 
             nbins=16, 
             hmax=4.0,
@@ -80,10 +81,14 @@ class EnsembleState():
             print('Image entropy too high')
             return False, log_likelihood
 
+        # Initial guess of velocity to centre entropy map
+        self.vinit = init_vel[ipx1:ipx1+self.w, ipy1:ipy1+self.h, :].mean(axis=(0,1))
+
+
         for vx in range(-vx_max,vx_max+1):
             for vy in range(-vx_max,vy_max+1):
-                ipx2 = int(self.pos1[0]+vx)
-                ipy2 = int(self.pos1[1]+vy)
+                ipx2 = int(self.pos1[0] + vx + self.vinit[0])
+                ipy2 = int(self.pos1[1] + vy + self.vinit[1])
                 # Check roi is inside image, otherwise entropy is zero
                 if ipx2>=0 and ipy2>=0 and ipx2+self.w<self.imw and ipy2+self.h<self.imh:
                     im2_roi = image2[ipx2:ipx2+self.w, \
@@ -94,12 +99,16 @@ class EnsembleState():
                     mi  = infotheory.mutual_information(hgram_offset)
                     log_likelihood[vx+vx_max,vy+vy_max] = mi
         # Return the map of conditional entropy at each offset
+        #plt.imshow(log_likelihood)
+        #plt.colorbar()
+        #plt.show()
         return True,log_likelihood
 
     def compute_mean_velocity(self, 
             image1, 
             image2, 
             mask, 
+            init_vel,
             llmap, 
             velstd, 
             threshold=0.75):
@@ -121,6 +130,10 @@ class EnsembleState():
         pky,pkx = np.meshgrid(np.arange(-ww,ww+1), np.arange(-hh,hh+1))
         #self.weight = np.exp(llmap)  * np.exp(-(pkx**2 + pky**2)/(2*velstd**2))
         self.weight = llmap  -(pkx**2 + pky**2)/(2*velstd**2)
+        #plt.imshow(self.weight)
+        #plt.colorbar()
+        #plt.show()
+
         print('Setting llmap')
         self.llmap = llmap
 
@@ -160,7 +173,8 @@ class EnsembleState():
         else:
             self.max_ll = rspl(minx[0], minx[1]) # np.max(self.llmap)
         print('max_ll ', self.max_ll)
-        self.vel = [vx,vy]
+        self.vel = [vx + self.vinit[0],vy + self.vinit[1]]
+        print(f'Computed velocity = {self.vel}')
         self.pos2 = self.pos1 + self.vel
 
         ipx1 = int(self.pos1[0])
@@ -222,12 +236,13 @@ class Ensemble():
 
 
 class EnsembleGrid:
-    def __init__(self, images, masks, mask_threshold):
+    def __init__(self, images, masks, init_vel, mask_threshold):
         # Dictionary of ensembles mapped by grid position
         self.ensembles = {} 
         # Array of images for computing ensembles
         self.images = images
         self.masks = masks
+        self.init_vel = init_vel
         self.mask_threshold = mask_threshold
         s = images[0].shape
         self.imw = s[0] 
@@ -276,12 +291,14 @@ class EnsembleGrid:
             mask,ll = state0.entropy_map(self.images[0,:,:], \
                                        self.images[1,:,:], 
                                        self.masks[0,:,:], \
+                                        self.init_vel[0,:,:,:],
                                        vx_max, vy_max, nbins=16, hmax=1e10,
                                        mask_threshold=self.mask_threshold)
             if mask:
                 vel,mx = state0.compute_mean_velocity(self.images[0,:,:], \
                                         self.images[1,:,:], 
                                         self.masks[0,:,:], 
+                                        self.init_vel[0,:,:,:],
                                         ll, velstd)
             else:
                 print('Outside mask ', (ix,iy))
@@ -297,12 +314,14 @@ class EnsembleGrid:
                 mask,ll = state.entropy_map(self.images[t,:,:], \
                                         self.images[t+1,:,:], 
                                         self.masks[t,:,:], \
+                                        self.init_vel[t,:,:,:],
                                         vx_max, vy_max, nbins=16, hmax=1e10,
                                         mask_threshold=self.mask_threshold)
                 if mask:
                     vel,mx = state.compute_mean_velocity(self.images[t,:,:], \
                                         self.images[t+1,:,:], 
                                         self.masks[t,:,:], 
+                                        self.init_vel[t,:,:,:],
                                         ll, velstd)
                 else:
                     print('Outside mask ', (ix,iy))
