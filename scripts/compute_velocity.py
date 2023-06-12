@@ -12,35 +12,56 @@ import os
 # Parameters -----------------------------------
 path = '.'
 
-startframe = 70
+startframe = 40
 step = 1
-nframes = 30
+nframes = 10
 nt = nframes-1
 
 windowsize = 64 
-windowspacing = 32
+windowspacing = 16
 window_px0 = 0
 window_py0 = 0
 
-maxvel = 7
+maxvel = 15
 
 #------------------------------------------------
 # Run analysis
 im = imread('../10x_1.5x_-5_pAAA_MG_1_MMStack_Pos9.ome.tif')
-im = im[startframe:startframe+(nframes * step):step,:,:,1]
-mask = imread('../C2-10x_1.5x_-5_pAAA_MG_1_MMStack_Pos9.ome.mask.tif')
+# im = imread('C4-Pos12.25-40.tif')
+#im = imread('../C4-Fused_12_13_14_15_1024.tif')
+#im = imread('../10x_1.5x_-5_pAAA_MG_1_MMStack_Pos8.ome.tif')
+
+#mask = imread('../C2-10x_1.5x_-5_pAAA_MG_1_MMStack_Pos9.ome.mask.tif')
+#mask = imread('C4-Pos12.25-40.mask.tif')
+#mask = imread('../C4-Fused_12_13_14_15_1024.contour.mask.tif')
+#mask = imread('../C2-10x_1.5x_-5_pAAA_MG_1_MMStack_Pos8_phase.contour.mask.ome.tif')
+mask = imread('../C2-10x_1.5x_-5_pAAA_MG_1_MMStack_Pos9.contour.mask.ome.tif')
+
+#init_vel = np.load('vinit.npy')
+init_vel = np.zeros(mask.shape + (2,))
+
+#mask = np.zeros(im.shape[:3])
+#x,y = np.meshgrid(np.arange(1024), np.arange(632))
+#cx,cy = 320,500
+#r = np.sqrt((x-cy)**2 + (y-cx)**2)
+#m = r<300
+#for frame in range(im.shape[0]):
+#    mask[frame,:,:] = m
+
 mask = mask / mask.max() # Make sure 0-1
+
+im = im[startframe:startframe+(nframes * step):step,:,:,1]
 mask = mask[startframe:startframe+(nframes * step):step,:,:]
 
 print("Image dimensions ",im.shape)
-eg = Ensemble.EnsembleGrid(im, mask, mask_threshold=1)
+eg = Ensemble.EnsembleGrid(im, mask, init_vel, mask_threshold=0.5)
 
 eg.initialise_ensembles(windowsize,windowsize, \
                         windowspacing,windowspacing, \
                         window_px0,window_py0)
 print("Grid dimensions ", eg.gx,eg.gy)
 
-eg.compute_motion(nt,maxvel,maxvel,velstd=5,dt=1)
+eg.compute_motion(nt,maxvel,maxvel,velstd=15,dt=1)
 
 
 # Generate some output
