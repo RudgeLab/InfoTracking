@@ -4,25 +4,31 @@ from scipy.signal import savgol_filter
 import matplotlib.pyplot as plt
 from scipy.ndimage import median_filter
 
-start_frame = 50
+start_frame = 40
 step = 1
 
 # Load the velocity field
 vel = np.load('vel.np.npy')
-_,_,nt,_ = vel.shape
+nx,ny,nt,_ = vel.shape
 for t in range(nt):
-    vel[:,:,t,0] = median_filter(vel[:,:,t,0], size=5)
-    vel[:,:,t,1] = median_filter(vel[:,:,t,1], size=5)
+    for ix in range(1,nx-1):
+        for iy in range(1,ny-1):
+            vel[ix,iy,t,0] = np.nanmedian(vel[ix-2:ix+3,iy-2:iy+3,t,0])
+            vel[ix,iy,t,1] = np.nanmedian(vel[ix-2:ix+3,iy-2:iy+3,t,1])
+#    vel[:,:,t,0] = median_filter(vel[:,:,t,0], size=5)
+#    vel[:,:,t,1] = median_filter(vel[:,:,t,1], size=5)
 
 # Load the radial velocity magnitude
 vmag = np.load('vmag.npy')
 
 # Load the tif image from the microscope
-im_all = imread('../10x_1.5x_-5_pAAA_MG_1_MMStack_Pos8.ome.tif').astype(float)
+#im_all = imread('../10x_1.5x_-5_pAAA_MG_1_MMStack_Pos8.ome.tif').astype(float)
+im_all = imread('../10x_1.5x_-5_pAAA_MG_1_MMStack_Pos9.ome.tif').astype(float)
 print(im_all.shape)
 channels = [0,2,3]
 
-mask_all = imread('../C2-10x_1.5x_-5_pAAA_MG_1_MMStack_Pos8_phase.contour.mask.ome.tif')
+#mask_all = imread('../C2-10x_1.5x_-5_pAAA_MG_1_MMStack_Pos8_phase.contour.mask.ome.tif')
+mask_all = imread('../C2-10x_1.5x_-5_pAAA_MG_1_MMStack_Pos9.contour.mask.ome.tif')
 
 im_all[mask_all==0] = np.nan
 
@@ -59,15 +65,18 @@ for frame in range(nt):
             rfluo_var[frame,r,c] = np.nanvar(f[(radpos[frame,:,:]>=r*rstep)*(radpos[frame,:,:]<(r+1)*rstep)])
             drfluo_var[frame,r,c] = np.nanvar(df[(radpos[frame,:,:]>=r*rstep)*(radpos[frame,:,:]<(r+1)*rstep)])
 
+clim0 = [np.nanmin(dfluo[:,:,:,0]), np.nanmax(dfluo[:,:,:,0])]
+clim1 = [np.nanmin(dfluo[:,:,:,1]), np.nanmax(dfluo[:,:,:,1])]
+clim2 = [np.nanmin(dfluo[:,:,:,2]), np.nanmax(dfluo[:,:,:,2])]
 for t in range(9):
     plt.subplot(1,3,1)
-    plt.imshow(fluo0[t,:,:,1])
+    plt.imshow(dfluo[t,:,:,0], clim=clim0)
     plt.colorbar()
     plt.subplot(1,3,2)
-    plt.imshow(fluo1[t,:,:,1])
+    plt.imshow(dfluo[t,:,:,1], clim=clim1)
     plt.colorbar()
     plt.subplot(1,3,3)
-    plt.imshow(fluo1[t,:,:,1]-fluo0[t,:,:,1])
+    plt.imshow(dfluo[t,:,:,2], clim=clim2)
     plt.colorbar()
     plt.show()
 

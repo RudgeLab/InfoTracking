@@ -57,7 +57,8 @@ class EnsembleState():
         # Check mask
         self.mask_roi = mask[ipx1:ipx1+self.w, \
                                     ipy1:ipy1+self.h]
-        if np.mean(self.mask_roi)<mask_threshold:
+        mask_content = np.mean(self.mask_roi)
+        if mask_content<mask_threshold:
         #if self.mask_roi[int(self.w/2),int(self.h/2)]==0:
             # Outside colony
             print('Outside colony')
@@ -99,9 +100,6 @@ class EnsembleState():
                     mi  = infotheory.mutual_information(hgram_offset)
                     log_likelihood[vx+vx_max,vy+vy_max] = mi
         # Return the map of conditional entropy at each offset
-        #plt.imshow(log_likelihood)
-        #plt.colorbar()
-        #plt.show()
         return True,log_likelihood
 
     def compute_mean_velocity(self, 
@@ -188,6 +186,23 @@ class EnsembleState():
                                     ipy2:ipy2+self.h]
         else:
             self.im2_roi = np.zeros((self.w,self.h,self.imd))
+
+
+        '''
+        # Plots for debugging
+        plt.subplot(1,4,1)
+        print(self.vel)
+        plt.imshow(self.weight)
+        plt.plot(vy + hh, vx + ww,  'r+')
+        plt.colorbar()
+        plt.subplot(1,4,2)
+        plt.imshow(self.im1_roi)
+        plt.subplot(1,4,3)
+        plt.imshow(self.im2_roi_orig)
+        plt.subplot(1,4,4)
+        plt.imshow(self.im2_roi)
+        plt.show()
+        '''
         return self.vel
 
     def save_rois(self, file_pattern1, file_pattern2):
