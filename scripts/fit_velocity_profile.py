@@ -34,7 +34,7 @@ for t in range(nt):
         for iy in range(1,ny-1):
             svmag[t,ix,iy] = np.nanmean(vmag[t,ix-1:ix+2,iy-1:iy+2])
 
-nvmag = svmag
+nvmag = np.zeros_like(svmag)
 for frame in range(nt):
     nvmag[frame,:,:] = svmag[frame,:,:] / vfront[frame*step + start_frame]
 
@@ -74,6 +74,7 @@ print(f'r0 = {r0}, C = {C}')
 # Make a plot to see how good the fit is
 x = radpos[~np.isnan(nvmag)].ravel()
 y = np.zeros((0,))
+yn = np.zeros((0,))
 for t in range(nt):
     for ix in range(nx):
         for iy in range(ny):
@@ -82,18 +83,21 @@ for t in range(nt):
                 B = 1 / (1 - np.exp(-rmax[t]/r0))
                 model_vmag = 1 + B * (np.exp(-r/r0) - 1)
                 mean_model_vmag = model_vmag.mean()
-                y = np.append(y, mean_model_vmag)
+                yn = np.append(yn, mean_model_vmag)
+                y = np.append(y, vfront[start_frame + step*t] * mean_model_vmag)
 
 plt.plot(x, nvmag[~np.isnan(nvmag)], '.', alpha=0.2)
-plt.plot(x, y, '.')
+plt.plot(x, yn, '.')
 plt.xlabel('Radial position')
 plt.ylabel('$v/v_{front}$')
 plt.show()
 
-plt.plot(y, nvmag[~np.isnan(nvmag)], '.', alpha=0.2)
+plt.plot(y, svmag[~np.isnan(nvmag)], '.', alpha=0.2)
 plt.plot([0,y.max()], [0,y.max()], 'k--')
 plt.xlabel('Model $v$')
 plt.ylabel('Velocimetry $v$')
+plt.xscale('log')
+plt.yscale('log')
 plt.show()
 
 mu0 = np.zeros((nt,))
