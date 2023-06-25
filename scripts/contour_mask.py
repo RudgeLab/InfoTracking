@@ -7,7 +7,7 @@ from skimage.draw import polygon
 import matplotlib.pyplot as plt
 
 start_frame = 0
-nt = 30
+nt = 144
 step = 1
 
 channels = [0,1,2]
@@ -15,12 +15,12 @@ channels = [0,1,2]
 #fname = '10x_1.5x_-5_pAAA_MG_1_MMStack_Pos9.ome.tif'
 #fname = 'C4-Fused_12_13_14_15_1024.tif'
 #fname = '10x_1.0x_pLPT20_DHL_1_MMStack_Pos7.ome.tif'
-#fname = '../Microscopy/10x_1.0x_pLPT20_DHL_1_MMStack_Pos0.ome.tif'
-fname = '../Microscopy/10x_1.0x_pLPT20_DHL_TiMain_1_MMStack_Pos5.ome.tif'
+fname = '../Microscopy/10x_1.0x_pLPT20_DHL_1_MMStack_Pos0.ome.tif'
+#fname = '../Microscopy/10x_1.0x_pLPT20_DHL_TiMain_1_MMStack_Pos5.ome.tif'
 im_all = imread(fname)
 print(im_all.shape)
 #im_all = im_all[:,20:-20,20:-20]
-im_all = im_all[:,:,:,1]
+im_all = im_all[:,:,:,0]
 im_all = im_all.astype(float)
 
 #cx,cy = 514,460
@@ -57,7 +57,7 @@ for t in range(nt):
     #snake = active_contour(gaussian(f, 3, preserve_range=False),
     #                   init, alpha=0.03, beta=20, gamma=0.001, w_edge=5, w_line=0)
     snake = active_contour(gaussian(f, 3, preserve_range=False),
-                       init, alpha=5e-3, beta=1e-6, gamma=0.001, w_edge=1, w_line=0)
+                       init, alpha=5e-3, beta=1e-6, gamma=0.001, w_edge=1+t/10, w_line=0)
 
     mnew = np.zeros_like(f)
     rr, cc = polygon(snake[:, 0], snake[:, 1], mnew.shape)
@@ -76,6 +76,6 @@ for t in range(nt):
     plt.close()
 
 #imsave('C4-Fused_12_13_14_15_1024.contour.mask.tif', mask_out>0)
-#imsave('10x_1.0x_pLPT20_DHL_1_MMStack_Pos0.ome.contour.mask.tif', mask_out>0)
-imsave('10x_1.0x_pLPT20_DHL_TiMain_1_MMStack_Pos5.ome.contour.mask.tif', mask_out>0)
+imsave('10x_1.0x_pLPT20_DHL_1_MMStack_Pos0.ome.contour.mask.tif', mask_out>0)
+#imsave('10x_1.0x_pLPT20_DHL_TiMain_1_MMStack_Pos5.ome.contour.mask.tif', mask_out>0)
 #imsave('C2-10x_1.5x_-5_pAAA_MG_1_MMStack_Pos9.contour.mask.ome.tif', mask_out>0)

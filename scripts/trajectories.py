@@ -9,33 +9,23 @@ from skimage.transform import warp_coords
 from scipy.ndimage import map_coordinates
 import matplotlib.pyplot as plt
 
-mask = imread('../C4-Fused_12_13_14_15_1024.contour.mask.tif')
-mask = mask>0
-
-fname = 'Fused_12_13_14_15_1024.bgcorr.tiff'
-im_all = imread('../' + fname)
-im_all = im_all[:,20:-20,20:-20,:]
-im_all = im_all.astype(float) 
-
-nt = 25
-
-vfront = 8.636534422186193
-mu0 = 0.22696434875613344
-r0 = 76.10476685
-v = np.zeros(mask.shape + (2,))
-
-for t in range(nt-1):
-    m = mask[t,:,:]
-    edt = distance_transform_edt(m)
-
-    vmag = vfront * np.exp(-edt/r0)
-
-    # Get direction to colony edge as negative of gradient of distance
-    gx,gy = np.gradient(edt)
+im_all = imread('../Microscopy/10x_1.0x_pLPT20_DHL_1_MMStack_Pos0.ome.tif')
+#im_all = imread('../Microscopy/10x_1.0x_pLPT20_DHL_TiMain_1_MMStack_Pos5.ome.tif')
+mask_all = imread('10x_1.0x_pLPT20_DHL_1_MMStack_Pos0.ome.contour.mask.tif')
+#mask_all = imread('10x_1.0x_pLPT20_DHL_TiMain_1_MMStack_Pos5.ome.contour.mask.tif')
  
-    v[t,:,:,0] = -vmag * gx
-    v[t,:,:,1] = -vmag * gy
-    
-np.save('vinit.npy', v)
+
+nt = 120
+
+vfront = np.load('velocimetry/10x_1.0x_pLPT20_DHL_1_MMStack_Pos0/vfront.npy')
+mu0 = np.load('velocimetry/10x_1.0x_pLPT20_DHL_1_MMStack_Pos0/mu0_fit.npy')
+r0 = 50
+
+snrkymo = np.load('snrkymo.npy')
+plt.imshow(snrkymo)
+plt.show()
+for t in range(nt):
+    m = mask_all[t,:,:]
+
 
 

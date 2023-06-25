@@ -12,9 +12,9 @@ import os
 # Parameters -----------------------------------
 path = '.'
 
-startframe = 40
+startframe = 0
 step = 1
-nframes = 21
+nframes = 51
 nt = nframes-1
 
 windowsize = 64

@@ -43,29 +43,29 @@ edt = np.zeros_like(mask_all).astype(float)
 for t in range(nt):
     edt[t,:,:] = distance_transform_edt(mask_all[t,:,:])
 
-#r0 = 60
-def fmin_func():
+r0 = 49.30114892335611
+def fmin_func(t):
     def func(x):
-        r0 = x
+        mu0 = x
         resid = []
-        for t in range(nt):
-            D = r0 * (1 - np.exp(-rmax[t] / r0))
-            mu0 =  2 * vfront[t] / D
-            gr = mu0 * np.exp(-edt[t,:,:]/r0)
-            gr[edt[t,:,:]==0] = np.nan
-            meangr = np.nanmean(gr, axis=(0,1))
-            err = meangr - exprate[t]
-            #print(mu0, meangr, x, D)
-            resid.append(err.ravel() * err.ravel())
-        return np.array(resid)
+        #D = r0 * (1 - np.exp(-rmax[t] / r0))
+        #mu0 =  2 * vfront[t] / D
+        gr = mu0 * np.exp(-edt[t,:,:]/r0)
+        gr[edt[t,:,:]==0] = np.nan
+        meangr = np.nanmean(gr, axis=(0,1))
+        err = meangr - exprate[t]
+        return err*err
     return func
 
-func = fmin_func()
-#res = fmin(func, x0=30, bounds=[0,rmax[50])
-res = least_squares(fmin_func(), x0=30, bounds=[0,rmax[50]])
-r0 = res.x[0]
-print(f'r0 = {r0}')
+mu0 = np.zeros((nt,))
+for t in range(nt):
+    func = fmin_func(t)
+    res = fmin(func, x0=0.3)
+    #res = least_squares(fmin_func(), x0=30, bounds=[0,rmax[50]])
+    mu0[t] = res
 
-print(func(mu0))
+np.save('mu0_fit.npy', mu0)
+plt.plot(mu0)
+plt.show()
 
 

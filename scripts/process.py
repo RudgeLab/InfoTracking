@@ -4,7 +4,7 @@ from scipy.ndimage import distance_transform_edt
 import matplotlib.pyplot as plt
 
 # Image frame to start from and step between frames
-start_frame = 40
+start_frame = 0
 step = 1
 
 # Position and velocity arrays from velocimetry
@@ -75,6 +75,7 @@ for frame in range(nt):
         for iy in range(ny):
             gx[ix,iy] = -np.nanmean(gradx[px[ix,iy]-32:px[ix,iy]+32, py[ix,iy]-32:py[ix,iy]+32])
             gy[ix,iy] = -np.nanmean(grady[px[ix,iy]-32:px[ix,iy]+32, py[ix,iy]-32:py[ix,iy]+32])
+            #radpos[frame,ix,iy] = np.nanmean(edt[frame, px[ix,iy]-32:px[ix,iy]+32, py[ix,iy]-32:py[ix,iy]+32])
 
     # Compute magnitude of velocities in radial direction
     velnorm = np.sqrt(vx**2 + vy**2)
