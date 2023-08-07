@@ -12,33 +12,33 @@ import os
 # Parameters -----------------------------------
 path = '.'
 
-startframe = 0
+startframe = 50
 step = 1
-nframes = 51
+nframes = 2
 nt = nframes-1
 
-windowsize = 64
-windowspacing = 32
+windowsize = 48
+windowspacing = 24
 window_px0 = 0
 window_py0 = 0
 
-maxvel = 19
+maxvel = 13
 
 #------------------------------------------------
 # Run analysis
-#im = imread('../10x_1.5x_-5_pAAA_MG_1_MMStack_Pos9.ome.tif')
+im = imread('../../../Microscopy/10x_1.5x_-5_pAAA_MG_1_MMStack_Pos9.ome.tif')
 # im = imread('C4-Pos12.25-40.tif')
 #im = imread('../C4-Fused_12_13_14_15_1024.tif')
 #im = imread('../10x_1.5x_-5_pAAA_MG_1_MMStack_Pos8.ome.tif')
-im = imread('../../../Microscopy/10x_1.0x_pLPT20_DHL_1_MMStack_Pos0.ome.tif')
-im = im[:,:,:,0]
+#im = imread('../../../Microscopy/10x_1.0x_pLPT20_DHL_1_MMStack_Pos0.ome.tif')
+im = im[:,:,:,1]
 
-#mask = imread('../C2-10x_1.5x_-5_pAAA_MG_1_MMStack_Pos9.ome.mask.tif')
+mask = imread('../../10x_1.5x_-5_pAAA_MG_1_MMStack_Pos9.ome.contour.mask.tif')
 #mask = imread('C4-Pos12.25-40.mask.tif')
 #mask = imread('../C4-Fused_12_13_14_15_1024.contour.mask.tif')
 #mask = imread('../C2-10x_1.5x_-5_pAAA_MG_1_MMStack_Pos8_phase.contour.mask.ome.tif')
 #mask = imread('../C2-10x_1.5x_-5_pAAA_MG_1_MMStack_Pos9.contour.mask.ome.tif')
-mask = imread('../../10x_1.0x_pLPT20_DHL_1_MMStack_Pos0.ome.contour.mask.tif')
+#mask = imread('../../10x_1.0x_pLPT20_DHL_1_MMStack_Pos0.ome.contour.mask.tif')
 
 #init_vel = np.load('vinit.npy')
 init_vel = np.zeros(mask.shape + (2,))
@@ -65,7 +65,7 @@ eg.initialise_ensembles(windowsize,windowsize, \
                         window_px0,window_py0)
 print("Grid dimensions ", eg.gx,eg.gy)
 
-eg.compute_motion(nt,maxvel,maxvel,velstd=21,dt=1)
+eg.compute_motion(nt,maxvel,maxvel,velstd=15,dt=1)
 
 
 # Generate some output

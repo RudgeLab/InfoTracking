@@ -18,8 +18,8 @@ import matplotlib.pyplot as plt
 #vfront = 6.585722451885091 
 #vfront = 65.8267122272761 / 60 * 10
 
-start_frame = 0
-offset = 20
+start_frame = 50
+offset = 0
 step = 1
 
 vfront = np.load('vfront.npy')
@@ -60,7 +60,7 @@ def residual_func(edt, nvmag, nt, nx, ny):
             for ix in range(nx):
                 for iy in range(ny):
                     if not np.isnan(nvmag[frame,ix,iy]):
-                        r = edt[frame, ix*32:ix*32+64, iy*32:iy*32+64]
+                        r = edt[frame, ix*24:ix*24+48, iy*24:iy*24+48]
                         B = 1 / (1 - np.exp(-rmax[t]/r0))
                         model_vmag = 1 + B * (np.exp(-r/r0) - 1)
                         mean_model_vmag = np.nanmean(model_vmag)
@@ -82,7 +82,7 @@ print(f'r0 = {r0}, C = {C}')
 # Make a plot to see how good the fit is
 colours = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
 i = 0
-times = [0,9,19,29]
+times = [0] #[0,9,19,29]
 for t in times:
     plt.subplot(2,2,i+1)
     x_model = np.zeros((0,))    
@@ -93,7 +93,7 @@ for t in times:
     for ix in range(nx):
         for iy in range(ny):
             if not np.isnan(svmag[t,ix,iy]):
-                r = edt[t, ix*32:ix*32+64, iy*32:iy*32+64]
+                r = edt[t, ix*24:ix*24+48, iy*24:iy*24+48]
                 x_data = np.append(x_data, np.nanmean(r))
                 y_data = np.append(y_data, svmag[t,ix,iy])
     plt.plot(x_data, y_data, '.', alpha=0.2) #, color=colours[i])
@@ -120,7 +120,7 @@ for t in range(nt):
     for ix in range(nx):
         for iy in range(ny):
             if not np.isnan(nvmag[t,ix,iy]):
-                r = edt[t, ix*32:ix*32+64, iy*32:iy*32+64]
+                r = edt[t, ix*24:ix*24+48, iy*24:iy*24+48]
                 B = 1 / (1 - np.exp(-rmax[t]/r0))
                 model_vmag = 1 + B * (np.exp(-r/r0) - 1)
                 mean_model_vmag = np.nanmean(model_vmag)

@@ -11,22 +11,29 @@ from scipy.ndimage import map_coordinates
 from scipy.signal import correlate, correlation_lags
 
 start_frame = 0
-nt = 120
+nt = 60
 
-im_all = imread('../Microscopy/10x_1.0x_pLPT20_DHL_1_MMStack_Pos0.ome.tif')
+im_all = imread('../Microscopy/10x_1.0x_-.5div2_pLPT20_MC_TiTweez_1_MMStack_Pos7.ome.tif')
+#im_all = imread('../Microscopy/10x_1.0x_pLPT20_DHL_1_MMStack_Pos0.ome.tif')
 #im_all = imread('../Microscopy/10x_1.0x_pLPT20_DHL_TiMain_1_MMStack_Pos5.ome.tif')
-mask_all = imread('10x_1.0x_pLPT20_DHL_1_MMStack_Pos0.ome.contour.mask.tif')
+#im_all = imread('../Microscopy/10x_1.0x_pLPT20_DHL_1_MMStack_Pos5.ome (1).tif')
+#im_all = imread('../Microscopy/10x_1.0x_pLPT20_MC_TiMain_1_MMStack_Pos1.ome.tif')
+#mask_all = imread('10x_1.0x_pLPT20_MC_TiMain_1_MMStack_Pos1.ome.contour.mask.tif')
+#mask_all = imread('10x_1.0x_pLPT20_DHL_1_MMStack_Pos4.ome (1).contour.mask.tif')
 #mask_all = imread('10x_1.0x_pLPT20_DHL_TiMain_1_MMStack_Pos5.ome.contour.mask.tif')
+#mask_all = imread('10x_1.0x_pLPT20_DHL_1_MMStack_Pos0.ome.contour.mask.tif')
+mask_all = imread('10x_1.0x_-.5div2_pLPT20_MC_TiTweez_1_MMStack_Pos7.ome.contour.mask.tif')
 
-x,y = np.meshgrid(np.arange(1200), np.arange(1200))
-nr = 32
+#x,y = np.meshgrid(np.arange(1200), np.arange(1200))
+x,y = np.meshgrid(np.arange(1024), np.arange(1024))
+nr = 64
 kymo = np.zeros((nr,nt,2))
 rkymo = np.zeros((nr,nt))
 nrkymo = np.zeros((nr,nt))
 rsteps = np.zeros((nt,))
 for t in range(nt):
     print(f'Processing frame {t}')
-    im = im_all[start_frame + t,:,:,1:3].astype(float)
+    im = im_all[start_frame + t,:,:,0:2].astype(float)
     mask = mask_all[start_frame + t,:,:].astype(float)
 
     for c in range(2):
@@ -53,7 +60,7 @@ for t in range(nt):
 
     #edt = distance_transform_edt(mask)
     rmin = 0
-    rmax = 600 #edt.max()
+    rmax = 512 #edt.max()
     rstep = (rmax - rmin) / nr
     rsteps[t] = rstep
 
@@ -144,6 +151,19 @@ for t in range(nt):
     if len(idx)>2:
         idx_range = idx[-2:]
         edge[t] = x[idx_range].mean()
+
+'''
+edge = np.zeros((nt,2)) + np.nan
+for t in range(nt):
+    x0 = kymo[:,t,0]
+    x1 = kymo[:,t,1]
+    valid = ~np.isnan(x0)
+    idx = np.where(valid)[0]
+    if len(idx)>2:
+        idx_range = idx[-2:]
+        edge[t,0] = x0[idx_range].mean()
+        edge[t,1] = x1[idx_range].mean()
+'''
 
 centre = nrkymo[:2,:].mean(axis=0)
 plt.plot(edge[::2])
