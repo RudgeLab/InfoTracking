@@ -25,16 +25,15 @@ step = 1
 
 vfront = np.load('results/vfront.npy')
 rmax = np.load('results/radius.npy')
-offset = np.where(rmax>128)[0][0]
-end_frame = np.where(vfront<=3)[0][0] + 1
-print(offset, end_frame)
-vfront = vfront[offset:end_frame]
-rmax = rmax[offset:end_frame]
+vfront = vfront[:-1]
+idx = np.where((vfront>3) * (rmax>128))[0]
+vfront = vfront[idx]
+rmax = rmax[idx]
 print(vfront.shape)
 
 # Normalize velocity by edge vel
 vmag = np.load('results/vmag.npy')
-vmag = vmag[offset:end_frame,:,:]
+vmag = vmag[idx,:,:]
 nt,nx,ny = vmag.shape
 
 svmag = np.zeros_like(vmag) + np.nan
@@ -48,7 +47,7 @@ for frame in range(nt):
     nvmag[frame,:,:] = svmag[frame,:,:] / vfront[frame*step + start_frame]
 
 radpos = np.load('results/radpos.npy')
-radpos = radpos[offset:end_frame,:,:]
+radpos = radpos[idx,:,:]
 #nvmag[~np.isnan(radpos)] = np.nan
 #svmag[~np.isnan(radpos)] = np.nan
 
@@ -75,7 +74,7 @@ def residual_func(edt, nvmag, nt, nx, ny):
 
 
 edt = np.load('results/edt.npy')
-edt = edt[offset:,:,:]
+edt = edt[idx,:,:]
 res = least_squares(residual_func(edt, svmag, nt, nx, ny), x0=(np.log(50),))
 r0 = np.exp(res.x[0])
 C = 0 #res.x[1]
@@ -114,7 +113,7 @@ for t in times:
 
     i += 1
 
-    plt.title(f't = {t}')
+    plt.title(f't = {idx[t]}')
     plt.xlabel('Radial position')
     plt.ylabel('$v/v_{front}$')
 plt.tight_layout()
