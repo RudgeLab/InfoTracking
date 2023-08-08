@@ -18,17 +18,23 @@ import matplotlib.pyplot as plt
 #vfront = 6.585722451885091 
 #vfront = 65.8267122272761 / 60 * 10
 
-start_frame = 50
-offset = 0
+start_frame = 0
+#offset = 0
+#end_frame = 80
 step = 1
 
-vfront = np.load('vfront.npy')
-vfront = vfront[offset:]
+vfront = np.load('results/vfront.npy')
+rmax = np.load('results/radius.npy')
+offset = np.where(rmax>128)[0][0]
+end_frame = np.where(vfront<=3)[0][0] + 1
+print(offset, end_frame)
+vfront = vfront[offset:end_frame]
+rmax = rmax[offset:end_frame]
 print(vfront.shape)
 
 # Normalize velocity by edge vel
-vmag = np.load('vmag.npy')
-vmag = vmag[offset:,:,:]
+vmag = np.load('results/vmag.npy')
+vmag = vmag[offset:end_frame,:,:]
 nt,nx,ny = vmag.shape
 
 svmag = np.zeros_like(vmag) + np.nan
@@ -41,14 +47,12 @@ nvmag = np.zeros_like(svmag)
 for frame in range(nt):
     nvmag[frame,:,:] = svmag[frame,:,:] / vfront[frame*step + start_frame]
 
-radpos = np.load('radpos.npy')
-radpos = radpos[offset:,:,:]
+radpos = np.load('results/radpos.npy')
+radpos = radpos[offset:end_frame,:,:]
 #nvmag[~np.isnan(radpos)] = np.nan
 #svmag[~np.isnan(radpos)] = np.nan
 
-
-rmax = np.load('radius.npy')
-rmax = rmax[offset:]
+print("Size of svmag array along axis 0:", svmag.shape[0])
 
 # Fit an exponential decay model to the velocity data
 def residual_func(edt, nvmag, nt, nx, ny):
@@ -59,22 +63,24 @@ def residual_func(edt, nvmag, nt, nx, ny):
         for frame in range(nt):
             for ix in range(nx):
                 for iy in range(ny):
-                    if not np.isnan(nvmag[frame,ix,iy]):
-                        r = edt[frame, ix*24:ix*24+48, iy*24:iy*24+48]
+                    if not np.isnan(nvmag[frame,ix,iy]) and vfront[frame]>1:
+                        r = edt[frame, ix*32:ix*32+64, iy*32:iy*32+64]
                         B = 1 / (1 - np.exp(-rmax[t]/r0))
                         model_vmag = 1 + B * (np.exp(-r/r0) - 1)
-                        mean_model_vmag = np.nanmean(model_vmag)
+                        mean_model_vmag = vfront[frame] * np.nanmean(model_vmag)
                         res.append(mean_model_vmag - nvmag[frame, ix, iy])
         return res
     return residuals
 
 
 
-edt = np.load('edt.npy')
+edt = np.load('results/edt.npy')
 edt = edt[offset:,:,:]
-res = least_squares(residual_func(edt, nvmag, nt, nx, ny), x0=(np.log(50),))
+res = least_squares(residual_func(edt, svmag, nt, nx, ny), x0=(np.log(50),))
 r0 = np.exp(res.x[0])
 C = 0 #res.x[1]
+
+np.save('results/r0.npy', r0)
 
 print(f'r0 = {r0}, C = {C}')
 
@@ -82,9 +88,9 @@ print(f'r0 = {r0}, C = {C}')
 # Make a plot to see how good the fit is
 colours = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
 i = 0
-times = [0] #[0,9,19,29]
+times = np.linspace(0, nt-1, 12).astype(int) #[0,int(nt/3),int(2*nt/3),nt-1]
 for t in times:
-    plt.subplot(2,2,i+1)
+    plt.subplot(4,3,i+1)
     x_model = np.zeros((0,))    
     y_model = np.zeros((0,))
     x_data = np.zeros((0,))
@@ -93,7 +99,7 @@ for t in times:
     for ix in range(nx):
         for iy in range(ny):
             if not np.isnan(svmag[t,ix,iy]):
-                r = edt[t, ix*24:ix*24+48, iy*24:iy*24+48]
+                r = edt[t, ix*32:ix*32+64, iy*32:iy*32+64]
                 x_data = np.append(x_data, np.nanmean(r))
                 y_data = np.append(y_data, svmag[t,ix,iy])
     plt.plot(x_data, y_data, '.', alpha=0.2) #, color=colours[i])
@@ -112,6 +118,7 @@ for t in times:
     plt.xlabel('Radial position')
     plt.ylabel('$v/v_{front}$')
 plt.tight_layout()
+plt.savefig('graphs/vfront_rad.png')
 plt.show()
 
 y_model = np.zeros((0,))
@@ -119,8 +126,8 @@ y_data = np.zeros((0,))
 for t in range(nt):
     for ix in range(nx):
         for iy in range(ny):
-            if not np.isnan(nvmag[t,ix,iy]):
-                r = edt[t, ix*24:ix*24+48, iy*24:iy*24+48]
+            if not np.isnan(svmag[t,ix,iy]):
+                r = edt[t, ix*32:ix*32+64, iy*32:iy*32+64]
                 B = 1 / (1 - np.exp(-rmax[t]/r0))
                 model_vmag = 1 + B * (np.exp(-r/r0) - 1)
                 mean_model_vmag = np.nanmean(model_vmag)
@@ -131,6 +138,7 @@ plt.plot(y_model, y_data, '.', alpha=0.1)
 plt.plot([0,y_model.max()], [0,y_model.max()], 'k--')
 plt.xlabel('Model $v$')
 plt.ylabel('Velocimetry $v$')
+plt.savefig('graphs/model_graph.png')
 #plt.xscale('log')
 #plt.yscale('log')
 plt.show()
@@ -141,7 +149,10 @@ for t in range(nt):
     mu0[t] = 2 * vfront[start_frame + step*t] / r0 * B
 
 # The edge growth rate = 2 * edge velocity / r0 
-np.save('mu0.npy', mu0)
+plt.plot(mu0)
+plt.savefig('graphs/mu0_profile.png')
+plt.show()
+np.save('results/mu0.npy', mu0)
 
 
 
